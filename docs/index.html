@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FunCineForge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        html { scroll-behavior: smooth; }
+        .hero-bg {
+            background-image: url('./assets/photo.jpg'); 
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .nav-link:hover { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
+        .lang-active {background-color: #2563eb; color: white;}
+        .demo-video {background: #000;}
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800">
+
+    <nav class="fixed top-0 w-full bg-white/90 backdrop-blur-md shadow-sm z-50">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
+        <span class="text-2xl font-bold text-slate-800">
+        FunCine<span class="text-blue-600">Forge</span>
+        </span>
+        <div class="hidden md:flex items-center space-x-8">
+        <a href="#abstract" class="nav-link text-sm font-medium" data-i18n="nav_abstract"></a>
+        <a href="#dataset" class="nav-link text-sm font-medium" data-i18n="nav_dataset"></a>
+        <a href="#demo" class="nav-link text-sm font-medium" data-i18n="nav_demo"></a>
+        <a href="#publication" class="nav-link text-sm font-medium" data-i18n="nav_pub"></a>
+        <a href="#faq" class="nav-link text-sm font-medium" data-i18n="nav_faq"></a>
+        <a href="https://github.com/FunAudioLLM/FunCineForge" target="_blank">
+            <i class="fab fa-github text-xl"></i>
+        </a>
+        <div class="flex border rounded-full overflow-hidden">
+            <button id="btn-en" class="px-3 py-1">EN</button>
+            <button id="btn-zh" class="px-3 py-1">ZH</button>
+        </div>
+        </div>
+    </div>
+    </nav>
+
+    <header class="hero-bg h-[600px] flex items-center justify-center text-center text-white relative">
+    <div class="absolute inset-0 bg-black/60"></div>
+    <div class="relative z-10 max-w-7xl px-4">
+        <h1 class="text-6xl font-bold mb-4">FunCineForge</h1>
+        <p class="text-2xl font-semibold text-gray-300" data-i18n="hero_line1"></p>
+        <p class="text-2xl font-semibold text-gray-300" data-i18n="hero_line2"></p>
+    </div>
+    </header>
+
+    <section class="py-10 bg-white border-b border-gray-200">
+        <div class="max-w-5xl mx-auto px-4 flex items-center gap-4 mb-2">
+            <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">NEWS</span>
+            <p class="text-sm text-gray-600" data-i18n="new1"></p>
+        </div>
+        <div class="max-w-5xl mx-auto px-4 flex items-center gap-4 mb-2">
+            <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">NEWS</span>
+            <p class="text-sm text-gray-600" data-i18n="new2"></p>
+        </div>
+    </section>
+
+
+    <section id="abstract" class="py-16 bg-white">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="max-w-5xl mx-auto mb-12">
+        <div class="bg-gray-50 rounded-2xl shadow-sm px-8 py-10">
+        <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center" data-i18n="nav_abstract"></h2>
+        <p class="text-gray-700 leading-relaxed text-lg text-justify">
+            Movie dubbing is the task of synthesizing speech from scripts conditioned on video scenes,
+            requiring accurate lip sync, faithful timbre transfer, and alignment with character identity and emotion.
+            However, existing methods face three major limitations: 
+            (1) limited support for diverse cinematic scenes, being restricted to short-text monologue dubbing;
+            (2) the absence of automated end-to-end toolkits for producing high-quality multimodal dubbing datasets, 
+            which confines prior work primarily to animated dubbing rather than live-action television;
+            and (3) suboptimal performance in lip sync, speech quality, and emotional expressiveness.
+            To address these issues, we propose FunCineForge, 
+            which comprises an end-to-end production toolkit for large-scale dubbing datasets 
+            and an MLLM-based dubbing model designed for diverse cinematic scenes.
+            Using the toolkit, we construct the first large-scale Chinese television dubbing dataset with rich annotations and diverse scenes, 
+            and demonstrate the high quality of these data. 
+            Experiments across monologue, narration, dialogue, and multi-speaker scenes show that 
+            our dubbing model consistently outperforms SOTA methods in audio quality, lip sync, timbre transfer, and instruction following.
+        </p>
+        </div>
+        </div>
+
+        <div class="flex gap-6 overflow-x-auto pb-4 pr-2 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            
+            <div class="flex-shrink-0 snap-start">
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm h-[260px] w-[420px] flex items-center justify-center p-4 cursor-zoom-in hover:shadow-md transition"
+                onclick="openImage('./assets/statistics.png')">
+                <img src="./assets/statistics.png" class="max-h-full max-w-full object-contain"/>
+                </div>
+            </div>
+
+            <div class="flex-shrink-0 snap-start">
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm h-[260px] w-[420px] flex items-center justify-center p-4 cursor-zoom-in hover:shadow-md transition"
+                onclick="openImage('./assets/overview.png')">
+                <img src="./assets/overview.png" class="max-h-full max-w-full object-contain"/>
+                </div>
+            </div>
+
+
+            <div class="flex-shrink-0 snap-start">
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm h-[260px] w-[420px] flex items-center justify-center p-4 cursor-zoom-in hover:shadow-md transition"
+                onclick="openImage('./assets/FunCineForge.png')">
+                <img src="./assets/FunCineForge.png" class="max-h-full max-w-full object-contain"/>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+    </section>
+
+
+    <section id="dataset" class="py-10 max-w-6xl mx-auto px-4">
+        <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center" data-i18n="nav_dataset"></h2>
+        <div class="mb-14">
+            <h3 class="text-2xl font-bold text-gray-900 mb-4 border-l-4 border-blue-600 pl-4" data-i18n="data_example"></h3>
+            <div class="bg-slate-900 text-slate-100 rounded-xl shadow overflow-x-auto p-5 text-sm leading-relaxed font-mono">
+            <pre>
+{"messages": [
+    {"role": "text", "content": "哎呀，将军，将军，不可连累老夫啊！大丈夫生居天地之间，岂能郁郁久居人下！"}, 
+    {"role": "token", "content": "xxx/zh/三国演义/07/tokens/07_00_23_51_30_spk12.npy"}, 
+    {"role": "vocal", "content": "xxx/zh/三国演义/07/vocals/07_00_23_51_30_spk12.wav"}, 
+    {"role": "instrumental", "content": "xxx/zh/三国演义/07/instrumental/07_00_23_51_30_spk12.wav"}, 
+    {"role": "video", "content": "xxx/zh/三国演义/07/clipped/07_00_23_51_30_spk12.mp4"}, 
+    {"role": "face", "content": "xxx/zh/三国演义/07/embs_video/07_00_23_51_30_spk12.pkl"}, 
+    {"role": "embswav", "content": "xxx/zh/三国演义/07/embs_wav/07_00_23_51_30_spk12.pkl"}, 
+    {"role": "dialogue", "content": [
+        {"start": 0.0, "duration": 4.0, "spk": "1", "gender": "男", "age": "中年", "timbre": "低沉、苍老、颤抖"}, 
+        {"start": 5.74, "duration": 2.63, "spk": "2", "gender": "男", "age": "青年", "timbre": "洪亮、有力、激昂"}, 
+        {"start": 8.89, "duration": 2.15, "spk": "2", "gender": "男", "age": "青年", "timbre": "高亢、有力、果断"}]}, 
+    {"role": "clue", "content": "两名角色对话，第一位中年男性情绪紧张，略带颤抖和哀求，表达对被牵连的恐惧。第二位青年男性语调变得激昂坚定，铿锵有力，充满对尊严和自由的强烈渴望。整体展现出从畏惧到反抗的情感转变。"}, 
+    {"role": "emotion", "content": "紧张 0.9"}
+],
+"utt": "sanguoyanyi_07_00_23_51_30_spk12",
+"type": "对话", 
+"source": "zh", 
+"task": "VTTS", 
+"text_length": 36,
+"clue_length": 89,
+"speech_length": 277
+}</pre>
+        </div>
+        </div>
+
+
+        <h2 class="text-2xl font-bold text-gray-900 mb-4 border-l-4 border-blue-600 pl-4" data-i18n="download"></h2>
+        
+        <div class="overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider" data-i18n="dataset_sample"></th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider" data-i18n="dataset_size"></th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider" data-i18n="dataset_license"></th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider" data-i18n="dataset_download"></th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">hongloumeng.7z.001</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">5.00 GB</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">CC-BY-NC 4.0</span></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/hongloumeng.7z.001" class="text-blue-600 hover:text-blue-900">hongloumeng.7z.001</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">hongloumeng.7z.002</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">5.00 GB</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">CC-BY-NC 4.0</span></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/hongloumeng.7z.002" class="text-blue-600 hover:text-blue-900">hongloumeng.7z.002</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">hongloumeng.7z.003</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">3.65 GB</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">CC-BY-NC 4.0</span></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/hongloumeng.7z.003" class="text-blue-600 hover:text-blue-900">hongloumeng.7z.003</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">hongloumeng.md5sum</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">159 B</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">CC-BY-NC 4.0</span></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/hongloumeng.md5" class="text-blue-600 hover:text-blue-900">MD5 File</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+        <p class="text-sm text-yellow-800">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            <strong data-i18n="dataset_notice_title"></strong>
+            <span data-i18n="dataset_notice_text"></span>
+        </p>
+        </div>
+
+    </section>
+
+
+    <section id="demo" class="py-20 bg-gray-100">
+        <div class="max-w-7xl mx-auto px-4">
+
+            <div class="text-center mb-10">
+            <h2 class="text-3xl font-bold text-gray-900 mb-3" data-i18n="nav_demo"></h2>
+            <p class="text-xl text-gray-600" data-i18n="demo_desc"></p>
+            <p class="text-xl text-gray-600" data-i18n="demo_desc2"></p>
+            </div>
+
+            <!-- Scene Tabs -->
+            <div class="flex justify-center gap-3 mb-12 flex-wrap">
+                <button
+                    class="scene-btn px-5 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white border border-blue-600 shadow transition"
+                    data-scene="monologue">
+                    Monologue
+                </button>
+                <button
+                    class="scene-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 transition"
+                    data-scene="narration">
+                    Narration
+                </button>
+                <button
+                    class="scene-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 transition"
+                    data-scene="dialogue">
+                    Dialogue
+                </button>
+                <button
+                    class="scene-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 transition"
+                    data-scene="multi">
+                    Multi-Speaker
+                </button>
+                <button
+                    class="scene-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 transition"
+                    data-scene="other">
+                    Other
+                </button>
+            </div>
+
+            <!-- Scene Content -->
+            <div class="scene-content" id="scene-monologue">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-12">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6 relative">
+                        <h4 class="text-center text-2xl font-bold text-blue-600 tracking-wide" data-i18n="synthetic"></h4>
+                        <h4 class="text-center text-2xl font-bold text-green-600 tracking-wide" data-i18n="real"></h4>
+                        <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_2.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_2_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            monologue (shot change)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位中年男性角色向大王陈述立场，语气沉稳且坚定，言辞间流露出对自身忠诚的强烈自信与决心。整体情感线索是忠贞不渝的承诺和不容置疑的信念。&lt;|endofclue|&gt;
+                            大王若是圣明，自然知道我张仪就是掉了脑袋，也不会把秦国的土地轻易交给楚国。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_3.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_3_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            monologue (shot change)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位中年女性以沉稳语重心长的语气表达了对女儿未来的担忧和长远规划的考虑，劝诫不要为一时意气而牺牲未来，情感是理性而富有责任感，带有微弱的忧虑。&lt;|endofclue|&gt;
+                            若换作是我的闺女，我会替她的后半辈子做打算，而不是争一时意气。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_4.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_4_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            monologue (shot change)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位青年男性角色以沉稳冷静的语气发表评判性言论，表达了对某人证词可信度的质疑和不信任。&lt;|endofclue|&gt;
+                            此人与令如兰关系甚密，他的证词恐怕不足为信。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_8.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_8_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            monologue (frequent shot changes)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位男性臣子附和华妃的观点，强调与皇帝共同用餐的珍贵，语气沉稳而得体。&lt;|endofclue|&gt;
+                            华妃说得对啊，臣难得与皇上一桌用餐，一家子团聚是不该议论其他！”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_5.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_5_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            monologue (far shot)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位青年女性语气紧张且略带委屈。她解释因害怕牵连大人而胡言乱语，随后疑惑地询问自己是否说错了，情绪从焦虑到疑惑。&lt;|endofclue|&gt;
+                            刺客问我，我不敢不答，又怕牵连大人让您为难，所以只能乱说了。怎么，是雪宁说错了吗？”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_1.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_1_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            monologue (emotional)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位中年男性角色，语气低沉生气，带着明显的无奈。表达了他自己一无所知、无法发言的困境，流露出深刻的无助与自我贬低的情绪。&lt;|endofclue|&gt;
+                            我没有说什么，我现在什么都不知道了，我一只火鸡我能说什么呢？”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_6.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_6_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            monologue (dark face)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位中年男性以沉稳有力的语调，阐述了他对事物的判断哲学，从不知道到明确提出自己的定理，语气坚定，透露出一种笃信和深思熟虑的意味。&lt;|endofclue|&gt;
+                            我虽然不知道你说的那个什么假说，但是我知道，我知道一个终极定理。那就是：邪乎到家必有鬼！”
+                        </div>
+                    </div>
+
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_7.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_7_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            monologue (dark environment)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位青年男性，语气中充满对已逝亲人的深切怀念与对过去美好生活的向往，语调柔和，略带感伤。&lt;|endofclue|&gt;
+                            若是你和阿爹还在的话，我们就可以像小时候那样一起生活了。”
+                        </div>
+                    </div>
+
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_8.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_8_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            monologue (children)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一个小女孩用悲伤、柔和但坚定的语气表达了对哥哥的深切关爱。她暗示自己处境艰难，却希望哥哥能好好活着，充满自我牺牲的爱。&lt;|endofclue|&gt;
+                            哥哥，因为你带我很难活下来，我想让哥哥活下去，好好地活着”
+                        </div>
+                    </div>
+
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_9.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_9_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            monologue (elderly)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位老年男性角色回顾往事，语调沉稳，略带一丝无奈和叹息。描述某人曾效力一方后又放弃的经历。&lt;|endofclue|&gt;
+                            许多年前，他曾经站在琅琊王那边，可是他自己放弃了。”
+                        </div>
+                    </div>
+
+
+                                        <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_10.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/monologue/monologue_10_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            monologue (crowd shot)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位男性领导在进行正式讲话，语调沉稳有力，旨在强调听众肩负的重要职责，整体情感庄重而富有号召力。&lt;|endofclue|&gt;
+                            在座的各位，你们都肩负着光明县经济、社会持续健康发展重任。”
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- Scene Content -->
+            <div class="scene-content hidden" id="scene-narration">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-12">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6 relative">
+                        <h4 class="text-center text-2xl font-bold text-blue-600 tracking-wide" data-i18n="synthetic"></h4>
+                        <h4 class="text-center text-2xl font-bold text-green-600 tracking-wide" data-i18n="real"></h4>
+                        <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/narration/narration_2.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/narration/narration_2_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            narration (storytelling)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位中老年男性，声音沉稳浑厚，以平静叙述的语调描述了两位神仙在仙山之间高谈阔论的场景。情感为中性、平稳，带有故事的引入感。&lt;|endofclue|&gt;
+                            当日，有两位神仙，时而凭风遨游，时而高谈阔论，来往于仙山缥缈之间，说这些真假有无之事。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/narration/narration_1.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/narration/narration_1_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            narration (shot change)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位中年女性以平稳的语调播报了城市即将进入梅雨季节的消息，并提醒市民做好防霉准备，情感上保持中立。&lt;|endofclue|&gt;
+                            我市将提前进入梅雨季节，望广大市民做好防霉准备。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/narration/narration_3.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/narration/narration_3_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            narration (off shot speaker)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位成年男性以沉稳自信的语调介绍商品，声音洪亮且专业，表达对商品价值的肯定，情感趋于中性。&lt;|endofclue|&gt;
+                            这把扇子是本店的镇店之宝，拿来送人再好不过了。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/narration/narration_4.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/narration/narration_4_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            narration (speaker occlusion)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位中年男性角色汇报一起发现尸体的事件，语气沉稳且严肃，强调事件的严重性。整体情绪偏中性，主要在于传递信息，不带个人情感。&lt;|endofclue|&gt;
+                            今儿咱就发现了修志怡那侄子的尸体，老侯大清早的就被叫局里开会去了”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/narration/narration_5.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/narration/narration_5_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            narration (shot face non speaker)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位女性讲述一个关于小说情节与现实反差的故事，略含讽刺。男性简短地补充了结论，声音低沉，带有无奈。整体展现出对现实与虚构之间矛盾的批判性反思。&lt;|endofclue|&gt;
+                            我听说现实中的男主是渣渣男，女主苦恋精神分裂了，才会画出跟现实刚好相反的情节。所以，挖坑不填。”
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="scene-content hidden" id="scene-dialogue">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-12">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6 relative">
+                        <h4 class="text-center text-2xl font-bold text-blue-600 tracking-wide" data-i18n="synthetic"></h4>
+                        <h4 class="text-center text-2xl font-bold text-green-600 tracking-wide" data-i18n="real"></h4>
+                        <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_2.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_2_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            dialogue (speaker occlusion)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;第一位女性说话人以柔和的语调询问如何为薛妹妹庆生，表达出寻求建议的情绪。第二位男性说话人以沉稳果断的语气给出解决方案，情感上较为平稳，带有反问的肯定意味。整体对话情感从询问到给出建议。&lt;|endofclue|&gt;
+                            二十一是薛妹妹的生日，你说该怎么个办法？往年怎么给林妹妹办的，今年也照样给薛妹妹办，不就是了？”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_5.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_5_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            dialogue (low resolution)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位老年男性对战事失利表达忧虑与不祥之感，语气沉重。另一位中年男性则沉稳劝慰，以豁达的口吻表明胜败乃兵家常事，情绪从担忧转为平静与开导。&lt;|endofclue|&gt;
+                            六出祁山，首战不利。预兆，不祥啊！丞相不必焦虑，胜败乃兵家常事。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_3.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_3_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            dialogue (bright light)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位中年男性语气从困惑和质问开始，升级为对对方冷酷无情的指责。另一位中年男性强调了其职业，流露出无奈和批判情绪。"&lt;|endofclue|&gt;
+                            他们在你脑子里到底灌什么了啊，让你变得这么铁石心肠？是个医生！”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_4.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_4_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            dialogue (long text & frequent shot switching)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;两位女性对话，第一位语气温柔关切，劝说对方进食并提供选择。第二位略带倦怠，随后语气转变，带有一丝自嘲，最终吐露心声，整体情感是关怀和理解的温馨。&lt;|endofclue|&gt;
+                            不合胃口？不太饿。你就再吃两口吧，早餐就没怎么吃。要不然你想吃什么，我买给你去？我这没出息的，我有点想吃云生包的饺子了。你不要告诉他，他太忙了。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_6.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_6_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            dialogue (two speakers in the same shot)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;第一位成年男性说话人对近期巧合表示疑惑。第二位中年男性说话人语气先表认同，随后分析情况并发出坚定的指令，展现出领导者的果断和决断力。&lt;|endofclue|&gt;
+                            孙丹，您说最近这事儿都这么巧？是啊。就前些天万和堂也少有的聚了一回，这绝对不会是巧合。你这么着，你先让弟兄们全力搜索，活要见人，死要见尸。”
+                        </div>
+                    </div>
+
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_7.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/dialogue/dialogue_7_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            dialogue (shot change & far shot)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位中年女性在传达工作指示，语气沉稳且带有提醒意味。另一位青年女性则表现出承诺，语气中略带一丝不耐烦。整体对话围绕工作安排展开。&lt;|endofclue|&gt;
+                            吴律师让我跟你说，请假归请假，该做的事还是要放在心上的。报告不要压在手里，你尽快交给方总啊！啊，我知道啊，我都不耽误的。”
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="scene-content hidden" id="scene-multi">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-12">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6 relative">
+                        <h4 class="text-center text-2xl font-bold text-blue-600 tracking-wide" data-i18n="synthetic"></h4>
+                        <h4 class="text-center text-2xl font-bold text-green-600 tracking-wide" data-i18n="real"></h4>
+                        <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/multi-speaker/multi-speaker_1.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/multi-speaker/multi-speaker_1_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            multi-speaker (long text & long shot)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位中年男性指挥官，语气沉稳有力，发出清晰的军事指令，情感表现为坚定和果断，士兵逐一应答。&lt;|endofclue|&gt;
+                            今既去，还需拨人马接应。嗯，子龙将军。在！你去定军山南面小路埋伏，黄将军若胜，不必出；倘黄将军有失，继续接应。是！严将军。在！你去阆中隘口防守，替回张飞、魏延二位将军同取汉中。是！刘封将军。在！你领三千兵于山中险要之地，多立旌旗以壮。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/multi-speaker/multi-speaker_2.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/multi-speaker/multi-speaker_2_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            multi-speaker (long text & shot change)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;三位中年男性正在进行案情分析，语调沉稳，没有明显的情绪波动，内容逻辑严谨，展现出理性探讨的氛围。&lt;|endofclue|&gt;
+                            虽然他是步行进入现场的，但是依据现场的案发时间和地域环境可以看出，他应该是有自驾的工具。凶手应该不低于四十岁，正至曾经从事着跟刑侦的有关的工作。能够在这个时间段四处游荡，应该是独居或者跟年长的父母同住。冷却期有点长。那也不排除他有正常的家庭生活。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/multi-speaker/narration_multi-speaker.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/multi-speaker/narration_multi-speaker_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            narration plus multi-speaker (long text & multi-shot)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;三位男性角色接力叙述与对话。第一位以磁性浑厚沉稳的语气，以第三视角讲述曹真的忧虑。第二位以报告形式透露紧急军情，语调浑厚有力，充满危机感。第三位以老练且略带无奈的语气感叹局势。整体情感由忧虑转为紧张和无奈。&lt;|endofclue|&gt;
+                            魏国大都督曹真闻之，陈仓继任守将王双被魏延斩首，伤感不已，因此忧虑不安，遂回洛阳养病。启禀陛下，陈仓守将王双被魏延斩首。大将郭淮前使急报，诸葛亮已攻占陈仓，率军复出岐山，来犯我境！啊，果不出我所料，孔明复来也！”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/multi-speaker/multi-speaker_4.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/multi-speaker/multi-speaker_4_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            multi-speaker (multiple speakers in the same shot)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;三位说话人就科幻电影中地球人登陆火星展开讨论。第一位说话人提出话题，第二位补充细节，最后一位以积极肯定的语气表达了对未来科技发展的期待，整体情绪由平稳过渡到充满希望。&lt;|endofclue|&gt;
+                            你说的是科幻电影。是，那里边地球人还能上火星呢。我觉得肯定能实现啊。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/multi-speaker/multi-speaker_5.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/multi-speaker/multi-speaker_5_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            multi-speaker (frequent speaker switching)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;多位角色进行生活化对话。青年男性礼貌送礼，中年男性亲切回应，青年女性俏皮互动。中年男性则语气带有些许无奈和责备，整体氛围轻松愉快，充满日常交流的温馨感。&lt;|endofclue|&gt;
+                            叔叔，给您和吴老师带一点东西。谢谢，你太客气了！来，坐。来暖场？哼，嘴硬！说得又没大没小了！你们两个是过来陪坐呢，还是单独去聊啊？”
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="scene-content hidden" id="scene-other">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-12">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6 relative">
+                        <h4 class="text-center text-2xl font-bold text-blue-600 tracking-wide" data-i18n="synthetic"></h4>
+                        <h4 class="text-center text-2xl font-bold text-green-600 tracking-wide" data-i18n="real"></h4>
+                        <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/other/long_slient.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/other/long_slient_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            including long silent segment in the middle
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位青年女性声音，语气柔和，先是主动提供经济帮助，表达了信任和关怀。随后观察到对方沉思，以轻柔的疑问语气询问，展现出体贴和善意。&lt;|endofclue|&gt;
+                            我这些钱都是应急用的，你要是周转不过来就跟我说。嗯，想什么呢？”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/other/dongbei.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/other/dongbei_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            Northeastern Mandarin (Chinese dialect)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位中年女性，语调热情洋溢，充满自信和亲和力。她积极推销自家制作的咸菜，强调其天然无添加的优点，表达出对产品的自豪感和对顾客的真诚推荐。&lt;|endofclue|&gt;
+                            把你嘚瑟的，家人们，我告诉你啊，我家的咸菜老好了！纯手工制作，不添加防腐剂，啊，色素也没有！看，俺自己家爷们儿都吃。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/other/fangyan.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/other/fangyan_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            dialect not supported in most cases
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;一位中年男性，语气沉稳而略带思索，以一种观察者的姿态，对简单行为如何汇聚成复杂事物表达出一种平静的感慨，语速适中，情感基调平和。&lt;|endofclue|&gt;
+                            每个人如此简单的行为，却能构成如此复杂的大东西。”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/other/sing.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/other/sing_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            singing (the dataset contains a small amount of singing data, singing synthesis ability is weak)
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;女性歌声，语调柔和，旋律略带叹息与悲伤。她反思爱情关系中从靠近到疏远的变化，以及内心的空虚与困惑。情感为淡淡的忧伤和寻求答案的迷茫。&lt;|endofclue|&gt;
+                            时间过了，彼此看着，明明靠近，却有了距离。爱明明有共同目的地，可路却为何渐渐偏离？繁华走过，心却空了，到底缺了什么？”
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-blue-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/other/error.mp4" type="video/mp4"></video>
+                            </div>
+                            <div class="hidden md:block absolute left-1/2 top-0 h-full w-px bg-gray-200"></div>
+                            <div class="rounded-xl overflow-hidden demo-video aspect-video border border-green-100">
+                            <video controls class="w-full h-full object-contain"><source src="https://speech-lab-share-data.oss-cn-shanghai.aliyuncs.com/FunCineForge/other/error_gt.mp4" type="video/mp4"></video>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mt-4 text-sm text-gray-700">
+                            <span class="font-semibold text-gray-900">Type:</span>
+                            text errors and missing facial features may lead to speaker leakage and truncation
+                        </div>
+
+                        <!-- Clue + Text -->
+                        <div class="mt-2 text-sm text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Clue + Text:</span>
+                            “&lt;|startofclue|&gt;男性说话人以调侃和无奈的语气表达了对找北京姑娘的理想与现实差距，流露出对购房压力的感慨。女性说话人则以好奇的语气回应。整体气氛轻松，但隐含对现实问题的思考。&lt;|endofclue|&gt;
+                            我还以为你们找一北京姑娘，就跟中彩票一样，直接拎包入赘就入住。没想到也得跟我们一样吭哧吭哧凑房款啊，还是没找啊。欸？蓉蓉。”
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <section id="publication" class="py-20 bg-gray-50">
+        <div class="max-w-5xl mx-auto px-4">
+            <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center" data-i18n="nav_pub"></h2>
+            <p class="mb-4 text-gray-700" data-i18n="cite_notice"></p>
+            
+            <div class="bg-slate-800 text-gray-300 p-6 rounded-lg font-mono text-sm overflow-x-auto shadow-inner">
+                <pre>Technical details will be released soon.</pre>
+            </div>
+            
+            <div class="mt-6 flex gap-4">
+                <a href="#" class="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"><i class="far fa-file-pdf"></i> Paper PDF</a>
+                <a href="https://github.com/FunAudioLLM/FunCineForge" class="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"><i class="fab fa-github"></i> Code </a>
+            </div>
+        </div>
+    </section>
+
+    <section id="faq" class="py-20 max-w-4xl mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center text-gray-900 mb-12">Frequently Asked Questions</h2>
+        
+        <div class="space-y-6">
+            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                <h3 class="text-lg font-bold text-gray-900 mb-2" data-i18n="Q1"></h3>
+                <div class="text-gray-600 space-y-3">
+                    <p data-i18n="A1"></p>
+                    
+                    <div class="bg-slate-900 text-slate-200 p-3 rounded-md font-mono text-sm my-2 shadow-inner">
+                        <span class="text-green-400">$</span> 7z x hongloumeng.7z.001
+                    </div>
+
+                    <p data-i18n="A1_2"></p>
+                    
+                    <div class="bg-slate-900 text-slate-200 p-3 rounded-md font-mono text-sm my-2 shadow-inner">
+                        <span class="text-green-400">$</span> md5sum -c hongloumeng.md5sum
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                <h3 class="text-lg font-bold text-gray-900 mb-2" data-i18n="Q2"></h3>
+                <div class="text-gray-600 space-y-4">
+                    <p data-i18n="A2"></p>
+                    <ul class="space-y-3 pl-1">
+                        <li class="flex items-start">
+                            <span class="flex-shrink-0 w-5 h-5 text-blue-500 mr-2"><i class="fas fa-check-circle"></i></span>
+                            <span data-i18n="q_1"></span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="flex-shrink-0 w-5 h-5 text-blue-500 mr-2"><i class="fas fa-check-circle"></i></span>
+                            <span data-i18n="q_2"></span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="flex-shrink-0 w-5 h-5 text-blue-500 mr-2"><i class="fas fa-check-circle"></i></span>
+                            <span data-i18n="q_3"></span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                <h3 class="text-lg font-bold text-gray-900 mb-2" data-i18n="Q3"></h3>
+                  <p class="text-gray-600">
+                    <span data-i18n="A3_prefix"></span>
+                    <a
+                    href="https://github.com/FunAudioLLM/FunCineForge/issues"
+                    target="_blank"
+                    class="text-blue-600 hover:underline"
+                    data-i18n="A3_link_issues"
+                    ></a>
+                    <span data-i18n="A3_middle"></span>
+                    <a
+                    href="mailto:jxliu@mail.ustc.edu.cn"
+                    class="text-blue-600 hover:underline"
+                    data-i18n="A3_link_email"
+                    ></a>
+                    <span data-i18n="A3_suffix"></span>
+                  </p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-slate-900 text-gray-400 py-12 text-center">
+        <div class="max-w-7xl mx-auto px-4">
+            <p class="mb-4 text-xl font-bold text-white">FunCineForge</p>
+            <p class="text-sm mb-6">Exploring the End-to-end Production Toolkit for Large-scale Dubbing Datasets and Multimodal Dubbing Models for Diverse Cinematic Scenes.</p>
+            <div class="text-xs text-gray-600">
+                &copy; Alibaba's Tongyi Lab Speech Team & University of Science and Technology of China. All rights reserved. <br>
+            </div>
+        </div>
+    </footer>
+
+
+<div
+  id="img-modal"
+  class="fixed inset-0 bg-black/80 z-50 hidden
+         flex items-center justify-center"
+  onclick="closeImage()"
+>
+  <img
+    id="img-modal-content"
+    class="max-w-[90vw] max-h-[90vh] object-contain
+           shadow-2xl rounded-lg"
+  />
+</div>
+
+<script>
+const i18n = {
+  zh: {
+    nav_abstract:"摘要",
+    nav_demo:"样例展示",
+    nav_dataset:"数据集",
+    nav_pub:"发表",
+    nav_faq:"FAQ",
+    hero_line1:"探索大规模配音数据集的端到端生产工具",
+    hero_line2:"和面向多样影视场景的多模态配音模型",
+    new1:"2025.12.18：FunCineForge 正式发布。",
+    new2:"2026.01.17：合成样例和数据集样例发布。",
+    demo_desc:"合成样本与真实样本在四种影视场景下的对比展示",
+    demo_desc2:"合成样本是由合成语音与真实的静音视频片段配对而成。",
+    synthetic:"合成样本",
+    real:"真实样本",
+    dataset_sample:"数据样例",
+    dataset_size:"大小",
+    dataset_license:"许可协议",
+    dataset_download:"下载链接",
+    data_example:"数据样例",
+    download:"下载",
+    dataset_notice_title: "声明：",
+    dataset_notice_text: "释放的部分数据集仅作参考，我们剔除了视频内容以保护版权，下载即代表您同意遵循我们的用户协议。",
+    cite_notice: "如果您使用了我们的数据集或代码，请引用以下论文：",
+    Q1: "Q：数据集如何解压？",
+    A1: "A：请使用 7zip 工具进行解压，命令如下：",
+    A1_2: "请使用 MD5 进行文件校验确认文件完整性：",
+    Q2: "Q：如何生产自己的数据集？",
+    A2: "A：您可以参考我们的开源代码进行自动化数据生产。为了保证数据质量，建议参考以下要求收集影视剧：",
+    q_1: "视频来源：电视剧或电影，非纪录片，人物独白或对话场景较多，人脸清晰且无遮挡（如无面罩、面纱）。",
+    q_2: "语音要求：发音标准，吐字清晰，人声突出。避免方言、背景噪音过大或口语感过强的素材。",
+    q_3: "画面要求：像素高，面部细节清晰，光线充足，避免极端阴暗或背光的场景。",
+    Q3: "Q: 如何反馈其他问题？",
+    A3_prefix: "A：您可以在 ",
+    A3_link_issues: "GitHub Issues",
+    A3_middle: " 中留言提问，或通过 ",
+    A3_link_email: "邮件",
+    A3_suffix: " 与开发者联系。"
+  },
+  en: {
+    nav_abstract:"Abstract",
+    nav_demo:"Demo Showcase",
+    nav_dataset:"Dataset",
+    nav_pub:"Publication",
+    nav_faq:"FAQ",
+    hero_line1:"Exploring the End-to-end Production Toolkit for Large-scale Dubbing Datasets",
+    hero_line2:"and Multimodal Dubbing Models for Diverse Cinematic Scenes",
+    new1:"2025.12.18: FunCineForge officially released.",
+    new2:"2026.01.17: Demo samples and dataset samples released.",
+    demo_desc:"Comparison between synthesized and ground truth samples across four cinematic scenes,",
+    demo_desc2:"where synthesized samples are formed by pairing synthesized speech with real silent video clips.",
+    synthetic:"Synthesized Sample",
+    real:"Ground Truth",
+    dataset_sample:"Dataset Sample",
+    dataset_size:"Size",
+    dataset_license:"License",
+    dataset_download:"Download Link",
+    data_example:"Data Example",
+    download:"Download",
+    dataset_notice_title: "Notice:",
+    dataset_notice_text: "The released dataset samples are for reference only. Video content has been removed to protect copyright. By downloading the data, you agree to comply with our usage agreement.",
+    cite_notice: "If you use our dataset or code, please cite the following paper:",
+    Q1: "Q: How to decompress the dataset?",
+    A1: "A: Please use the 7zip tool to decompress, the command is as follows:",
+    A1_2: "Please use MD5 to verify the integrity of the files:",
+    Q2: "Q: How to produce your own dataset?",
+    A2: "A: You can refer to our open-source code for automated data production. To ensure data quality, it is recommended to collect television sources to the following requirements:",
+    q_1: "Video Source: TV dramas or movies, not documentaries, with more monologue or dialogue scenes, clear and unobstructed faces (e.g., no masks or veils).",
+    q_2: "Speech Requirements: Standard pronunciation, clear articulation, prominent human voice. Avoid materials with strong dialects, excessive background noise, or strong colloquialism.",
+    q_3: "Image Requirements: High resolution, clear facial details, sufficient lighting, avoiding extremely dark or strong backlit scenes.",
+    Q3: "Q: How to report other issues?",
+    A3_prefix: "A: You may leave your questions on ",
+    A3_link_issues: "GitHub Issues",
+    A3_middle: ", or contact the ",
+    A3_link_email: "developers via email",
+    A3_suffix: "."
+  }
+};
+
+function openImage(src) {
+  const modal = document.getElementById('img-modal');
+  const img = document.getElementById('img-modal-content');
+  img.src = src;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeImage() {
+  const modal = document.getElementById('img-modal');
+  modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function switchLang(lang){
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    el.textContent=i18n[lang][el.dataset.i18n];
+  });
+  btnZh.classList.toggle("lang-active",lang==="zh");
+  btnEn.classList.toggle("lang-active",lang==="en");
+}
+
+const btnZh=document.getElementById("btn-zh");
+const btnEn=document.getElementById("btn-en");
+btnZh.onclick=()=>switchLang("zh");
+btnEn.onclick=()=>switchLang("en");
+switchLang("en");
+
+const buttons = document.querySelectorAll('.scene-btn');
+const sceneContents = document.querySelectorAll('.scene-content');
+buttons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const scene = btn.dataset.scene;
+
+    /* 切换按钮样式 */
+    buttons.forEach(b => {
+      b.classList.remove(
+        'bg-blue-600',
+        'text-white',
+        'border-blue-600',
+        'shadow'
+      );
+      b.classList.add(
+        'bg-white',
+        'text-gray-700',
+        'border-gray-300'
+      );
+    });
+
+    btn.classList.remove('bg-white', 'text-gray-700', 'border-gray-300');
+    btn.classList.add(
+      'bg-blue-600',
+      'text-white',
+      'border-blue-600',
+      'shadow'
+    );
+
+    /* 切换内容显示 */
+    sceneContents.forEach(content => {
+      content.classList.add('hidden');
+    });
+
+    const activeScene = document.getElementById(`scene-${scene}`);
+    if (activeScene) {
+      activeScene.classList.remove('hidden');
+    }
+  });
+});
+</script>
+
+</body>
+</html>
