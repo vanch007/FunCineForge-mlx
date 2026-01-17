@@ -1,4 +1,4 @@
-### <p align="center">「简体中文 | [English](./README_en.md)」</p>
+### <p align="center">「[English](./README.md) | 简体中文」</p>
 
 **<p align="center"> 🎬 FunCineForge：一种统一的数据集工具与模型用于多样化影视场景的零样本影视配音 </p>**
 

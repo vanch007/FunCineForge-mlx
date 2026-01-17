@@ -1,4 +1,4 @@
-### <p align="center">「[简体中文](./README.md) | English」</p>
+### <p align="center">「English | [简体中文](./README_zh.md)」</p>
 
 **<p align="center"> 🎬 FunCineForge: A Unified Dataset Toolkit and Model for Zero-Shot Movie Dubbing in Diverse Cinematic Scenes </p>**
 
