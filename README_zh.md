@@ -23,7 +23,7 @@
 
 <a name="数据集&样例"></a>
 ## 数据集 & 样例 🎬
-您可以访问此 [网站]() 获取我们的 CineDub-CN 数据集样本和演示样本。
+您可以访问此 [网站](https://anonymous.4open.science/w/FunCineForge/) 获取我们的 CineDub-CN 数据集样本和演示样本。
 
 <a name="数据集管道"></a>
 ## 数据集管道 🔨
