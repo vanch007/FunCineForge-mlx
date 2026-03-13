@@ -129,7 +129,7 @@ bash infer.sh
 
 <a name="社区交流"></a>
 ## 社区交流 🍟
-Fun-CineForge 开源项目由通义实验室语音团队和语音及语言信息处理国家工程研究中心学生开发并维护，我们欢迎您在 Fun-CineForge GitHub Issues 参与问题讨论，或联系我们合作开发。
+Fun-CineForge 开源项目由通义实验室语音团队和中国科学技术大学 NERCSLIP 实验室学生开发并维护，我们欢迎您在 Fun-CineForge GitHub Issues 参与问题讨论，或联系我们合作开发。
 有任何问题您可以联系[开发者](mailto:jxliu@mail.ustc.edu.cn)。
 
 ⭐ 希望您你支持 Fun-CineForge，谢谢。

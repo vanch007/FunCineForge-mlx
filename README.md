@@ -133,7 +133,7 @@ If you use our dataset or code, please cite the following paper:
 
 <a name="Comminicate"></a>
 ## Comminicate 🍟
-The Fun-CineForge open-source project is developed and maintained by the Tongyi Lab Speech Team and student from the National Engineering Research Center of Speech and Language Information Processing.
+The Fun-CineForge open-source project is developed and maintained by the Tongyi Lab Speech Team and a student from NERCSLIP Lab, University of Science and Technology of China.
 We welcome you to participate in discussions on Fun-CineForge GitHub Issues or contact us for collaborative development.
 For any questions, you can contact the [developer](mailto:jxliu@mail.ustc.edu.cn).
 
