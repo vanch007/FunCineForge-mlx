@@ -76,6 +76,10 @@
             <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">NEWS</span>
             <p class="text-sm text-gray-600" data-i18n="new3"></p>
         </div>
+        <div class="max-w-5xl mx-auto px-4 flex items-center gap-4 mb-2">
+            <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">NEWS</span>
+            <p class="text-sm text-gray-600" data-i18n="new4"></p>
+        </div>
     </section>
 
 
@@ -109,8 +113,15 @@
             
             <div class="flex-shrink-0 snap-start">
                 <div class="bg-white border border-gray-200 rounded-xl shadow-sm h-[260px] w-[420px] flex items-center justify-center p-4 cursor-zoom-in hover:shadow-md transition"
-                onclick="openImage('./assets/statistics.png')">
-                <img src="./assets/statistics.png" class="max-h-full max-w-full object-contain"/>
+                onclick="openImage('./assets/statistics_zh.png')">
+                <img src="./assets/statistics_zh.png" class="max-h-full max-w-full object-contain"/>
+                </div>
+            </div>
+
+            <div class="flex-shrink-0 snap-start">
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm h-[260px] w-[420px] flex items-center justify-center p-4 cursor-zoom-in hover:shadow-md transition"
+                onclick="openImage('./assets/statistics_en.png')">
+                <img src="./assets/statistics_en.png" class="max-h-full max-w-full object-contain"/>
                 </div>
             </div>
 
@@ -2952,6 +2963,7 @@ const i18n = {
     new1:"2025.12.18：Fun-CineForge 数据集管道工具包上线。",
     new2:"2026.01.19：发布中文演示样例和 CineDub-CN 数据集样例。",
     new3:"2026.03.05：发布英文演示样例和 CineDub-EN 数据集样例。",
+    new4:"2026.03.16：开源推理代码和 checkpoints。",
     demo_desc:"合成样本与真实样本在四种影视场景下的对比展示，",
     demo_desc2:"合成样本是由合成语音与真实的静音视频片段配对而成。",
     demo_desc3:"“音色克隆”小节展示了使用同一参考音频进行音色克隆的几个示例，",
@@ -3000,6 +3012,7 @@ const i18n = {
     new1:"2025.12.18: Fun-CineForge dataset pipeline toolkit is online!",
     new2:"2026.01.19: Chinese demo samples and CineDub-CN dataset samples released.",
     new3:"2026.03.05: English demo samples and CineDub-EN dataset samples released.",
+    new4:"2026.03.16: Open source inference code and checkpoints.",
     demo_desc:"Comparison between synthesized and ground truth samples across four cinematic scenes,",
     demo_desc2:"where synthesized samples are created by pairing synthesized speech with real silent video clips.",
     demo_desc3:"“Timbre Cloning” section shows several examples of timbre cloning using the same reference audio,",
