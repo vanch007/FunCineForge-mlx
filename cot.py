@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 用音视频通用 caption 大模型做 audio / video CoT分析和矫正。
-我们依赖接口: requests url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+我们依赖阿里云百炼接口: requests url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
     本工具推荐并采用 gemini-3-pro-preview model， 可自行更换其他多模态理解大模型如 Qwen 3.5， gemini 3 flash
     python cot.py --root_dir datasets/clean/zh --provider google --model gemini-3-pro-preview --api_key xxx --resume
 可更换 url 依赖，你可自行参考 https://ai.google.dev/gemini-api/docs/structured-output ，并修改 call_dashscope_api 代码
