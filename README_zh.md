@@ -14,6 +14,7 @@
 
 <div align="center">
 <h4><a href="#数据集&样例">数据集 & 样例</a>
+｜<a href="#环境安装">环境安装</a>
 ｜<a href="#数据集管道">数据集管道</a>
 ｜<a href="#配音模型">配音模型</a>
 ｜<a href="#近期更新">近期更新</a>
@@ -28,12 +29,11 @@
 ## 数据集 & 样例 🎬
 您可以访问此 [https://funcineforge.github.io/](https://funcineforge.github.io/) 获取我们的 CineDub-CN 数据集和 CineDub-EN 数据集样例和演示样例。
 
-<a name="数据集管道"></a>
-## 数据集管道 🔨
+<a name="环境安装"></a>
+## 环境安装
 
-### 环境安装
+Fun-CineForge 依赖 Conda 和 Python 环境。执行 **setup.py** 自动安装整个项目环境和开源模型。
 
-Fun-CineForge 数据集管道工具包的运行仅依赖于一个 Python 环境。
 ```shell
 # Conda
 git clone git@github.com:FunAudioLLM/FunCineForge.git
@@ -42,6 +42,9 @@ sudo apt-get install ffmpeg
 # 初始化设置
 python setup.py
 ```
+
+<a name="数据集管道"></a>
+## 数据集管道 🔨
 
 ### 数据收集
 如果您想自行生产数据，我们建议您参考下面的要求收集相应的电影或影视剧。

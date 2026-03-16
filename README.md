@@ -15,6 +15,7 @@ in Diverse Cinematic Scenes</b>
 
 <div align="center">  
 <h4><a href="#Dataset&Demo">Dataset & Demo</a>
+｜<a href="#Environment">Environment</a>
 ｜<a href="#Dataset-Pipeline">Dataset Pipeline</a>
 ｜<a href="#Dubbing-Model">Dubbing Model</a>
 ｜<a href="#Recent-Updates">Recent Updates</a>
@@ -29,13 +30,11 @@ in Diverse Cinematic Scenes</b>
 ## Dataset & Demo 🎬
 You can access [https://funcineforge.github.io/](https://funcineforge.github.io/) to get our CineDub-CN dataset samples and demo samples. 
 
+<a name="Environment"></a>
+## Environmental Installation
 
-<a name="Dataset-Pipeline"></a>
-## Dataset Pipeline 🔨
+Fun-CineForge relies on Conda and Python environments. Execute **setup.py** to automatically install the entire project environment and open-source model.
 
-### Environmental Installation
-
-Fun-CineForge dataset pipeline toolkit only relies on a Python environment to run.
 ```shell
 # Conda
 git clone git@github.com:FunAudioLLM/FunCineForge.git
@@ -44,6 +43,9 @@ sudo apt-get install ffmpeg
 # Initial settings
 python setup.py
 ```
+
+<a name="Dataset-Pipeline"></a>
+## Dataset Pipeline 🔨
 
 ### Data collection
 If you want to produce your own data, 
