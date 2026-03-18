@@ -201,6 +201,7 @@ class FunCineForgeLM(nn.Module):
         output = self.load_data(data_in[0], **kwargs)
         batch = to_device(output, kwargs["device"])
         input_ids = batch["input_ids"]
+        input_ids = input_ids * (input_ids > 0)
         text_flag = batch["text_flag"]
         timespk_flag = batch["timespk_flag"]
         codec_flag = batch["codec_flag"]

@@ -28,8 +28,12 @@ class FunCineForgeInferModel(nn.Module):
         self.fm_model = fm_model.model
         self.voc_model = voc_model.model
         mel_extractor = self.fm_model.mel_extractor
-        self.mel_frame_rate = mel_extractor.sampling_rate // mel_extractor.hop_length
-        self.sample_rate = mel_extractor.sampling_rate
+        if mel_extractor:
+            self.mel_frame_rate = mel_extractor.sampling_rate // mel_extractor.hop_length
+            self.sample_rate = mel_extractor.sampling_rate
+        else:
+            self.mel_frame_rate = self.fm_model.sample_rate // 480
+            self.sample_rate = self.fm_model.sample_rate
 
     @torch.no_grad()
     def inference(
