@@ -28,7 +28,7 @@ This fork optimizes [FunCineForge](https://github.com/FunAudioLLM/FunCineForge) 
 <a name="performance"></a>
 ## Performance 🚀
 
-Benchmarked on MacBook Pro M4 Pro (48GB), Qwen2-0.5B backbone, fp32:
+Benchmarked on MacBook Pro M3 Max (128GB), Qwen2-0.5B backbone, fp32:
 
 | Stage | PyTorch MPS | MLX | Speedup |
 |-------|:-----------:|:---:|:-------:|
