@@ -30,6 +30,7 @@ _MODEL = None
 _KWARGS = {}
 _DEMO_ITEMS = []
 _BGM_PATH = None      # Background music track from vocal separation
+_ORIG_SEGMENTS = []   # Original video timestamps for post-synthesis placement
 
 EXP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "exps")
 CKPT_DIR = os.path.join(EXP_DIR, "funcineforge_zh_en")
@@ -247,6 +248,35 @@ DEFAULT_DIALOGUE_TABLE = [
     ["1", "男 Male", "中年 Adult", 0.0, 3.0],
     ["2", "女 Female", "中年 Adult", 3.0, 3.0],
 ]
+
+
+def compact_dialogue_timeline(segments, gap=0.3):
+    """Compact dialogue segments into continuous timeline with small gaps.
+
+    The model expects dialogue segments to be near-continuous (like demo data),
+    not at the original scattered video positions.
+
+    Args:
+        segments: list of [spk, gender, age, start, duration] from auto-detect
+        gap: small gap between segments in seconds
+
+    Returns:
+        compacted_segments: same format with adjusted start times
+    """
+    if not segments:
+        return segments
+
+    # Sort by original start time
+    sorted_segs = sorted(segments, key=lambda s: float(s[3]))
+
+    compacted = []
+    cursor = 0.0
+    for seg in sorted_segs:
+        dur = float(seg[4])
+        compacted.append([seg[0], seg[1], seg[2], round(cursor, 3), round(dur, 3)])
+        cursor += dur + gap
+
+    return compacted
 
 CAMPP_MODEL_PATH = os.path.join(CKPT_DIR, "camplus.onnx")
 
@@ -545,8 +575,23 @@ def on_synthesize(
         except Exception:
             pass
 
-    # Mix generated vocals with background music (if available)
-    if _BGM_PATH and wav_path and os.path.exists(wav_path):
+    # Place generated audio on original video timeline (if we have original segment info)
+    if _ORIG_SEGMENTS and _BGM_PATH and wav_path and os.path.exists(wav_path):
+        try:
+            placed_path = place_audio_on_timeline(
+                wav_path, _ORIG_SEGMENTS, _BGM_PATH
+            )
+            logger.info(f"Audio placed on timeline + BGM mixed: {placed_path}")
+            wav_path = placed_path
+        except Exception as e:
+            logger.warning(f"Timeline placement failed, trying simple mix: {e}")
+            # Fallback: simple BGM mix without timeline placement
+            try:
+                mixed_path = mix_audio_with_bgm(wav_path, _BGM_PATH)
+                wav_path = mixed_path
+            except Exception:
+                pass
+    elif _BGM_PATH and wav_path and os.path.exists(wav_path):
         try:
             mixed_path = mix_audio_with_bgm(wav_path, _BGM_PATH)
             logger.info(f"Mixed BGM into output: {mixed_path}")
@@ -648,12 +693,78 @@ def mix_audio_with_bgm(generated_wav_path, bgm_path, output_path=None):
     return output_path
 
 
+
+def place_audio_on_timeline(generated_wav, orig_segments, bgm_path):
+    """Place compact TTS audio segments at original video timeline positions.
+
+    The TTS model generates one continuous audio for all dialogue segments.
+    This function splits it back and places each piece at the original position,
+    with BGM filling the gaps.
+
+    Args:
+        generated_wav: path to TTS output (compact audio)
+        orig_segments: list of dicts with original {start, duration, ...}
+        bgm_path: background music track
+
+    Returns:
+        output_path: mixed audio at original timeline positions
+    """
+    import subprocess
+    import soundfile as sf
+    import numpy as np
+    import librosa
+
+    # Read the generated audio and BGM
+    gen_audio, gen_sr = sf.read(generated_wav)
+    bgm_audio, bgm_sr = sf.read(bgm_path)
+
+    # Resample BGM to match generated audio sample rate if needed
+    if bgm_sr != gen_sr:
+        bgm_audio = librosa.resample(bgm_audio, orig_sr=bgm_sr, target_sr=gen_sr)
+
+    # Output length = length of BGM (which matches original video)
+    out_len = len(bgm_audio)
+    output = np.zeros(out_len, dtype=np.float32)
+
+    # Copy BGM as base at 50% volume
+    output[:len(bgm_audio)] = bgm_audio[:out_len] * 0.5
+
+    # Split generated audio by compact segment durations and place at original positions
+    gen_cursor = 0
+    for seg in sorted(orig_segments, key=lambda s: s["start"]):
+        orig_start_sample = int(seg["start"] * gen_sr)
+        dur_samples = int(seg["duration"] * gen_sr)
+        # Add a small gap between compact segments (0.3s gap was used in compaction)
+        compact_dur_with_gap = dur_samples + int(0.3 * gen_sr)
+
+        # Extract the segment from generated audio
+        gen_end = min(gen_cursor + dur_samples, len(gen_audio))
+        seg_audio = gen_audio[gen_cursor:gen_end]
+
+        # Place at original position in output
+        place_end = min(orig_start_sample + len(seg_audio), out_len)
+        place_len = place_end - orig_start_sample
+        if place_len > 0 and orig_start_sample >= 0:
+            output[orig_start_sample:place_end] = (
+                output[orig_start_sample:place_end] * 0.3 +  # reduce BGM under speech
+                seg_audio[:place_len]
+            )
+
+        gen_cursor += compact_dur_with_gap  # skip the gap used in compaction
+
+    # Save output
+    output_path = generated_wav.replace(".wav", "_placed.wav")
+    sf.write(output_path, output, gen_sr, subtype='PCM_16')
+    return output_path
+
+
+
 def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
     """Full auto-analysis: vocal separation + ASR + VAD + speaker diarization.
 
     Fills: text, clue, scene_type, gender, age, dialogue_df, detect_status, ref_audio.
     """
-    global _BGM_PATH
+    global _BGM_PATH, _ORIG_SEGMENTS
 
     try:
         audio_path, is_temp = _extract_audio_from_source(ref_audio, ref_video)
@@ -698,9 +809,23 @@ def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
         progress(0.6, desc="Detecting speakers...")
         dialogue_table = auto_detect_dialogue(vocals_path)
 
-        # ── Step 4: Derive scene type and speaker info ──
+        # ── Step 4: Compact timeline + derive scene type ──
+        progress(0.8, desc="Building compact timeline...")
         n_speakers = len(set(row[0] for row in dialogue_table))
         n_segments = len(dialogue_table)
+
+        # Store original segments for post-synthesis timeline placement
+        _ORIG_SEGMENTS = []
+        for row in dialogue_table:
+            _ORIG_SEGMENTS.append({
+                "start": float(row[3]), "duration": float(row[4]),
+                "spk": str(row[0]),
+                "gender": "male" if "Male" in row[1] else "female",
+                "age": "adult",
+            })
+
+        # Compact segments into continuous timeline (model expects this)
+        dialogue_table = compact_dialogue_timeline(dialogue_table)
 
         if n_speakers == 1:
             scene = "独白 Monologue"
