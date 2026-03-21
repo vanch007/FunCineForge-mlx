@@ -29,6 +29,7 @@ logger = logging.getLogger("webui")
 _MODEL = None
 _KWARGS = {}
 _DEMO_ITEMS = []
+_BGM_PATH = None      # Background music track from vocal separation
 
 EXP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "exps")
 CKPT_DIR = os.path.join(EXP_DIR, "funcineforge_zh_en")
@@ -544,6 +545,30 @@ def on_synthesize(
         except Exception:
             pass
 
+    # Mix generated vocals with background music (if available)
+    if _BGM_PATH and wav_path and os.path.exists(wav_path):
+        try:
+            mixed_path = mix_audio_with_bgm(wav_path, _BGM_PATH)
+            logger.info(f"Mixed BGM into output: {mixed_path}")
+            wav_path = mixed_path
+        except Exception as e:
+            logger.warning(f"BGM mixing failed, using vocals only: {e}")
+
+    # Re-merge mixed audio into video (if video was generated)
+    if vid_path and os.path.exists(vid_path) and wav_path:
+        import subprocess
+        mixed_vid = vid_path.replace(".mp4", "_final.mp4")
+        try:
+            subprocess.run([
+                "ffmpeg", "-y",
+                "-i", vid_path, "-i", wav_path,
+                "-c:v", "copy", "-map", "0:v:0", "-map", "1:a:0",
+                "-shortest", mixed_vid
+            ], check=True, capture_output=True)
+            vid_path = mixed_vid
+        except Exception as e:
+            logger.warning(f"Video re-mux failed: {e}")
+
     return wav_path, vid_path, f"✅ Done in {elapsed:.1f}s"
 
 
@@ -563,11 +588,73 @@ def _extract_audio_from_source(ref_audio, ref_video):
     return None, False
 
 
-def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
-    """Full auto-analysis: ASR + VAD + speaker diarization + gender detection.
+def separate_vocals(audio_path, output_dir=None):
+    """Separate vocals from background using demucs htdemucs.
 
-    Fills: text, clue, scene_type, gender, age, dialogue_df, detect_status.
+    Returns (vocals_path, bgm_path).
     """
+    import subprocess
+    out_dir = output_dir or OUTPUT_DIR
+    sep_dir = os.path.join(out_dir, "_separated")
+    os.makedirs(sep_dir, exist_ok=True)
+
+    python_bin = sys.executable
+    device = "mps" if torch.backends.mps.is_available() else "cpu"
+
+    result = subprocess.run([
+        python_bin, "-m", "demucs",
+        "--two-stems", "vocals",
+        "-n", "htdemucs",
+        "-d", device,
+        "-o", sep_dir,
+        audio_path
+    ], capture_output=True, text=True)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"Demucs failed: {result.stderr[-300:]}")
+
+    # Find output files — demucs outputs to sep_dir/htdemucs/<basename>/
+    basename = os.path.splitext(os.path.basename(audio_path))[0]
+    stem_dir = os.path.join(sep_dir, "htdemucs", basename)
+    vocals_path = os.path.join(stem_dir, "vocals.wav")
+    bgm_path = os.path.join(stem_dir, "no_vocals.wav")
+
+    if not os.path.exists(vocals_path):
+        raise FileNotFoundError(f"Vocals not found at {vocals_path}")
+
+    return vocals_path, bgm_path
+
+
+def mix_audio_with_bgm(generated_wav_path, bgm_path, output_path=None):
+    """Mix generated vocals with background music track."""
+    import subprocess
+    if not bgm_path or not os.path.exists(bgm_path):
+        return generated_wav_path
+    if not output_path:
+        output_path = generated_wav_path.replace(".wav", "_mixed.wav")
+
+    # Mix: generated vocals + BGM, trim to shorter
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-i", generated_wav_path,
+        "-i", bgm_path,
+        "-filter_complex",
+        "[0:a]apad[a];[a][1:a]amix=inputs=2:duration=shortest:weights=1 0.5[out]",
+        "-map", "[out]",
+        "-ac", "1", "-ar", "24000",
+        output_path
+    ], check=True, capture_output=True)
+
+    return output_path
+
+
+def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
+    """Full auto-analysis: vocal separation + ASR + VAD + speaker diarization.
+
+    Fills: text, clue, scene_type, gender, age, dialogue_df, detect_status, ref_audio.
+    """
+    global _BGM_PATH
+
     try:
         audio_path, is_temp = _extract_audio_from_source(ref_audio, ref_video)
     except Exception as e:
@@ -575,21 +662,33 @@ def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
     if not audio_path:
         raise gr.Error("⚠️ Please upload Reference Audio or Video first")
 
+    vocals_path = audio_path  # fallback if separation fails
     try:
-        # ── Step 1: ASR transcription ──
-        progress(0.1, desc="Transcribing audio...")
+        # ── Step 1: Vocal/BGM separation ──
+        progress(0.05, desc="Separating vocals from background...")
+        try:
+            vocals_path, bgm_path = separate_vocals(audio_path)
+            _BGM_PATH = bgm_path
+            logger.info(f"Vocal separation done: vocals={vocals_path}, bgm={bgm_path}")
+        except Exception as e:
+            logger.warning(f"Vocal separation failed, using original: {e}")
+            _BGM_PATH = None
+            vocals_path = audio_path
+
+        # ── Step 2: ASR on vocals only ──
+        progress(0.3, desc="Transcribing vocals...")
         import whisper
         asr_model = whisper.load_model("base")
-        asr_result = asr_model.transcribe(audio_path, language=None)
+        asr_result = asr_model.transcribe(vocals_path, language=None)
         text = asr_result["text"].strip()
         lang = asr_result.get("language", "unknown")
         logger.info(f"ASR result: lang={lang}, text={text[:100]}")
 
-        # ── Step 2: VAD + speaker diarization ──
-        progress(0.5, desc="Detecting speakers...")
-        dialogue_table = auto_detect_dialogue(audio_path)
+        # ── Step 3: VAD + speaker diarization on vocals ──
+        progress(0.6, desc="Detecting speakers...")
+        dialogue_table = auto_detect_dialogue(vocals_path)
 
-        # ── Step 3: Derive scene type and speaker info ──
+        # ── Step 4: Derive scene type and speaker info ──
         n_speakers = len(set(row[0] for row in dialogue_table))
         n_segments = len(dialogue_table)
 
@@ -600,16 +699,15 @@ def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
         else:
             scene = "多人 Multi-Speaker"
 
-        # First speaker's gender/age for single-speaker panel
         first_gender = dialogue_table[0][1] if dialogue_table else "男 Male"
         first_age = dialogue_table[0][2] if dialogue_table else "中年 Adult"
 
-        # ── Step 4: Generate clue description ──
+        # ── Step 5: Generate clue description ──
         progress(0.9, desc="Generating description...")
         gender_desc = []
         for spk_id in sorted(set(row[0] for row in dialogue_table)):
             spk_rows = [r for r in dialogue_table if r[0] == spk_id]
-            g = spk_rows[0][1]  # e.g. "男 Male"
+            g = spk_rows[0][1]
             gender_en = "male" if "Male" in g else "female"
             gender_desc.append(f"Speaker {spk_id}: {gender_en}")
 
@@ -618,8 +716,9 @@ def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
         clue = f"A {lang_name} {scene.split()[0]} scene with {n_speakers} speaker(s). " + \
                ", ".join(gender_desc) + "."
 
+        bgm_note = " | 🎵 BGM separated" if _BGM_PATH else ""
         status = f"✅ ASR ({lang_name}): {len(text)} chars | " + \
-                 f"{n_segments} segments, {n_speakers} speakers"
+                 f"{n_segments} segments, {n_speakers} speakers{bgm_note}"
 
     except Exception as e:
         raise gr.Error(f"⚠️ Auto-analysis failed: {e}")
@@ -638,6 +737,7 @@ def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
         first_age,       # age (single-speaker)
         dialogue_table,  # dialogue_df
         status,          # detect_status
+        vocals_path,     # ref_audio → replace with vocals-only
     )
 
 
@@ -788,12 +888,12 @@ def build_ui():
         demo_table.select(on_demo_select, outputs=form_outputs)
         clear_btn.click(on_clear_demo, outputs=form_outputs)
 
-        # Auto-analyze: ASR + VAD + speaker diarization
+        # Auto-analyze: ASR + VAD + speaker diarization + vocal separation
         analyze_btn.click(
             on_auto_analyze,
             inputs=[ref_audio, ref_video],
             outputs=[text, clue, scene_type, gender, age,
-                     dialogue_df, detect_status],
+                     dialogue_df, detect_status, ref_audio],
         )
 
         # Synthesize
