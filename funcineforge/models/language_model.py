@@ -38,11 +38,16 @@ class FunCineForgeLM(nn.Module):
             kwargs["infer_use_lora"] = False
         
 
+        # Force eager attention on MPS — SDPA corrupts MPS memory causing random crashes
+        _extra_kwargs = {}
+        if torch.backends.mps.is_available() and not torch.cuda.is_available():
+            _extra_kwargs["attn_implementation"] = "eager"
         model = AutoModelForCausalLM.from_pretrained(
             init_param_path,
             load_in_8bit=None,
             device_map=None,
             use_cache=None,
+            **_extra_kwargs,
             **llm_load_kwargs,
         )
 

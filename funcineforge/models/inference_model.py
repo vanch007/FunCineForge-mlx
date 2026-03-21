@@ -3,7 +3,7 @@ import torch.nn as nn
 import logging
 import numpy as np
 import os
-import torchaudio
+import soundfile as sf
 import time
 import shutil
 from funcineforge.register import tables
@@ -70,9 +70,12 @@ class FunCineForgeInferModel(nn.Module):
                 wav_out_dir = os.path.join(output_dir, "wav")
                 os.makedirs(wav_out_dir, exist_ok=True)
                 output_wav_path = os.path.join(wav_out_dir, f"{key[0]}.wav")
-                torchaudio.save(
-                    output_wav_path, wav.cpu(),
-                    sample_rate=self.sample_rate, encoding='PCM_S', bits_per_sample=16
+                # Use soundfile instead of torchaudio (TorchCodec 2.10 crash)
+                sf.write(
+                    output_wav_path,
+                    wav.cpu().numpy().T,
+                    samplerate=self.sample_rate,
+                    subtype='PCM_16'
                 )
                 
                 silent_video_path = data_in[0]["video"]
@@ -93,6 +96,11 @@ class FunCineForgeInferModel(nn.Module):
             logging.info(f"fm_voc time: {((time.time()-fm_time)*1000):.2f} ms")
 
             batch_data_time = wav.shape[1] / self.voc_model.sample_rate
+
+        # Flush MPS GPU cache to prevent memory accumulation → SIGKILL
+        if torch.backends.mps.is_available():
+            torch.mps.synchronize()
+            torch.mps.empty_cache()
 
         return [[wav]], {"batch_data_time": batch_data_time}
     

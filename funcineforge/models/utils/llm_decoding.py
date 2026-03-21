@@ -110,9 +110,13 @@ class LLMDecoder(nn.Module):
         llm_cache = states.get("llm_cache", None)
         out_tokens, hit_eos = [], False
         for i in range(max_length):
-            with torch.cuda.amp.autocast(
-                enabled=True if llm_dtype != "fp32" else False, dtype=dtype_map[llm_dtype]
-            ) if quantize is False else nullcontext():
+            # Skip autocast entirely on MPS (causes Metal crashes) or when fp32
+            _use_autocast = (quantize is False and llm_dtype != "fp32"
+                             and torch.cuda.is_available())
+            _ctx = (torch.amp.autocast(device_type='cuda', enabled=True,
+                                       dtype=dtype_map[llm_dtype])
+                    if _use_autocast else nullcontext())
+            with _ctx:
                 # default attention_mask is causal, no longer need manually construct
                 # input_masks = torch.ones((1, input_embeddings.shape[1]), device=input_embeddings.device).to(torch.bool)
                 

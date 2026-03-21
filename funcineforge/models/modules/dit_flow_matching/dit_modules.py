@@ -10,6 +10,7 @@ d - dimension
 from __future__ import annotations
 from typing import Optional
 import math
+from contextlib import nullcontext
 
 import torch
 from torch import nn
@@ -17,6 +18,23 @@ import torch.nn.functional as F
 import torchaudio
 
 from x_transformers.x_transformers import apply_rotary_pos_emb
+
+
+def _mps_safe_attention(query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False):
+    """Manual attention for MPS — avoids F.scaled_dot_product_attention which corrupts MPS memory."""
+    if not torch.backends.mps.is_available():
+        return F.scaled_dot_product_attention(query, key, value, attn_mask=attn_mask, dropout_p=dropout_p, is_causal=is_causal)
+    scale = 1.0 / math.sqrt(query.size(-1))
+    attn_weight = torch.matmul(query, key.transpose(-2, -1)) * scale
+    if attn_mask is not None:
+        if attn_mask.dtype == torch.bool:
+            attn_weight = attn_weight.masked_fill(~attn_mask, float('-inf'))
+        else:
+            attn_weight = attn_weight + attn_mask
+    attn_weight = torch.softmax(attn_weight, dim=-1)
+    if dropout_p > 0.0:
+        attn_weight = torch.nn.functional.dropout(attn_weight, p=dropout_p)
+    return torch.matmul(attn_weight, value)
 
 
 # raw wav to mel spec
@@ -182,7 +200,7 @@ class GRN(nn.Module):
         self.beta = nn.Parameter(torch.zeros(1, 1, dim))
 
     def forward(self, x):
-        with torch.cuda.amp.autocast(enabled=False):
+        with (nullcontext() if torch.backends.mps.is_available() else torch.amp.autocast('cuda', enabled=False)):
             Gx = torch.norm(x, p=2, dim=1, keepdim=True)
         Nx = Gx / (Gx.mean(dim=-1, keepdim=True) + 1e-6)
         return self.gamma * (x * Nx) + self.beta + x
@@ -215,7 +233,7 @@ class ConvNeXtV2Block(nn.Module):
         x = x.transpose(1, 2)  # b n d -> b d n
         x = self.dwconv(x)
         x = x.transpose(1, 2)  # b d n -> b n d
-        with torch.cuda.amp.autocast(enabled=False):
+        with (nullcontext() if torch.backends.mps.is_available() else torch.amp.autocast('cuda', enabled=False)):
             x = self.norm(x)
         x = self.pwconv1(x)
         x = self.act(x)
@@ -241,7 +259,7 @@ class AdaLayerNormZero(nn.Module):
         emb = self.linear(self.silu(emb))
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = torch.chunk(emb, 6, dim=1)
 
-        with torch.cuda.amp.autocast(enabled=False):
+        with (nullcontext() if torch.backends.mps.is_available() else torch.amp.autocast('cuda', enabled=False)):
             x = self.norm(x) * (1 + scale_msa[:, None]) + shift_msa[:, None]
         return x, gate_msa, shift_mlp, scale_mlp, gate_mlp
 
@@ -263,7 +281,7 @@ class AdaLayerNormZero_Final(nn.Module):
         emb = self.linear(self.silu(emb))
         scale, shift = torch.chunk(emb, 2, dim=1)
 
-        with torch.cuda.amp.autocast(enabled=False):
+        with (nullcontext() if torch.backends.mps.is_available() else torch.amp.autocast('cuda', enabled=False)):
             x = self.norm(x) * (1 + scale)[:, None, :] + shift[:, None, :]
         return x
 
@@ -391,7 +409,7 @@ class AttnProcessor:
         else:
             attn_mask = None
 
-        x = F.scaled_dot_product_attention(query, key, value, attn_mask=attn_mask, dropout_p=0.0, is_causal=False)
+        x = _mps_safe_attention(query, key, value, attn_mask=attn_mask, dropout_p=0.0, is_causal=False)
         x = x.transpose(1, 2).reshape(batch_size, -1, attn.heads * head_dim)
         x = x.to(query.dtype)
 
@@ -472,7 +490,7 @@ class JointAttnProcessor:
         else:
             attn_mask = None
 
-        x = F.scaled_dot_product_attention(query, key, value, attn_mask=attn_mask, dropout_p=0.0, is_causal=False)
+        x = _mps_safe_attention(query, key, value, attn_mask=attn_mask, dropout_p=0.0, is_causal=False)
         x = x.transpose(1, 2).reshape(batch_size, -1, attn.heads * head_dim)
         x = x.to(query.dtype)
 
@@ -526,7 +544,7 @@ class DiTBlock(nn.Module):
         # process attention output for input x
         x = x + gate_msa.unsqueeze(1) * attn_output
 
-        with torch.cuda.amp.autocast(enabled=False):
+        with (nullcontext() if torch.backends.mps.is_available() else torch.amp.autocast('cuda', enabled=False)):
             ff_norm = self.ff_norm(x) * (1 + scale_mlp[:, None]) + shift_mlp[:, None]
         ff_output = self.ff(ff_norm)
         x = x + gate_mlp.unsqueeze(1) * ff_output
@@ -590,7 +608,7 @@ class MMDiTBlock(nn.Module):
         else:  # if not last layer
             c = c + c_gate_msa.unsqueeze(1) * c_attn_output
 
-            with torch.cuda.amp.autocast(enabled=False):
+            with (nullcontext() if torch.backends.mps.is_available() else torch.amp.autocast('cuda', enabled=False)):
                 norm_c = self.ff_norm_c(c) * (1 + c_scale_mlp[:, None]) + c_shift_mlp[:, None]
             c_ff_output = self.ff_c(norm_c)
             c = c + c_gate_mlp.unsqueeze(1) * c_ff_output
@@ -598,7 +616,7 @@ class MMDiTBlock(nn.Module):
         # process attention output for input x
         x = x + x_gate_msa.unsqueeze(1) * x_attn_output
 
-        with torch.cuda.amp.autocast(enabled=False):
+        with (nullcontext() if torch.backends.mps.is_available() else torch.amp.autocast('cuda', enabled=False)):
             norm_x = self.ff_norm_x(x) * (1 + x_scale_mlp[:, None]) + x_shift_mlp[:, None]
         x_ff_output = self.ff_x(norm_x)
         x = x + x_gate_mlp.unsqueeze(1) * x_ff_output

@@ -17,7 +17,14 @@ def main(**kwargs):
     num_gpus = kwargs.get("num_gpus", 1)
     world_size = kwargs.get("world_size", 1)
     num_tasks = world_size * num_gpus
-    torch.cuda.set_device(local_rank)
+    # MPS device detection
+    if torch.cuda.is_available():
+        torch.cuda.set_device(local_rank)
+        _device = f"cuda:{local_rank}"
+    elif torch.backends.mps.is_available():
+        _device = "mps"
+    else:
+        _device = "cpu"
     task_id = node_rank * num_gpus + local_rank
     logger = get_logger(log_level=logging.INFO, local_rank=task_id, world_size=num_tasks)
 
@@ -35,7 +42,7 @@ def main(**kwargs):
         model=os.path.join(lm_exp_dir, lm_model_name),
         init_param=lm_ckpt_path,
         output_dir=None,
-        device=f"cuda:{local_rank}",
+        device=_device,
     ))
     lm_model.model.to(dtype_map[kwargs.get("llm_dtype", "fp32")])
 
@@ -47,7 +54,7 @@ def main(**kwargs):
         model=os.path.join(fm_exp_dir, fm_model_name),
         init_param=fm_ckpt_path,
         output_dir=None,
-        device=f"cuda:{local_rank}",
+        device=_device,
     )
     fm_model.model.to(dtype_map[kwargs.get("fm_dtype", "fp32")])
 
@@ -59,7 +66,7 @@ def main(**kwargs):
         model=os.path.join(voc_exp_dir, voc_model_name),
         init_param=voc_ckpt_path,
         output_dir=None,
-        device=f"cuda:{local_rank}",
+        device=_device,
     )
     voc_model.model.to(dtype_map[kwargs.get("voc_dtype", "fp32")])
 

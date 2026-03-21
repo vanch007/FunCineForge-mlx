@@ -10,6 +10,7 @@ import numpy as np
 from scipy.signal import get_window
 import torch
 import torchaudio
+import soundfile as sf
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.utils import remove_weight_norm
@@ -828,9 +829,12 @@ class CausalHifiGan(nn.Module):
                     new_freq=output_sr
                 )
                 wav_sr = output_sr
-            torchaudio.save(
-                os.path.join(wav_out_dir, f"{key[0]}.wav"), recon_speech.cpu(),
-                sample_rate=wav_sr, encoding='PCM_S', bits_per_sample=16
+            # Use soundfile instead of torchaudio (TorchCodec 2.10 crash)
+            sf.write(
+                os.path.join(wav_out_dir, f"{key[0]}.wav"),
+                recon_speech.cpu().numpy().T,
+                samplerate=wav_sr,
+                subtype='PCM_16'
             )
 
         return recon_speech
