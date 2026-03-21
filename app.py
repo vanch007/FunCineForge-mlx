@@ -247,6 +247,147 @@ DEFAULT_DIALOGUE_TABLE = [
     ["2", "女 Female", "中年 Adult", 3.0, 3.0],
 ]
 
+CAMPP_MODEL_PATH = os.path.join(CKPT_DIR, "camplus.onnx")
+
+
+def auto_detect_dialogue(audio_path, min_speech_dur=0.3, min_silence_dur=0.4,
+                          energy_threshold=0.01):
+    """Auto-detect dialogue segments from audio file.
+
+    Pipeline:
+      1. Energy-based VAD → speech segments
+      2. CAM++ xvec per segment → speaker embeddings
+      3. Agglomerative clustering → speaker IDs
+      4. F0 analysis → gender estimation
+
+    Returns list of [Speaker, Gender, Age, Start(s), Duration(s)] rows.
+    """
+    import librosa
+    from funcineforge.utils.load_utils import OnnxModel
+    from sklearn.cluster import AgglomerativeClustering
+
+    sr_vad = 16000
+    wav, _ = librosa.load(audio_path, sr=sr_vad, mono=True)
+    total_dur = len(wav) / sr_vad
+
+    # ── Step 1: Energy-based VAD ──
+    frame_len = int(0.025 * sr_vad)  # 25ms frames
+    hop_len = int(0.010 * sr_vad)    # 10ms hop
+    energy = np.array([
+        np.sqrt(np.mean(wav[i:i + frame_len] ** 2))
+        for i in range(0, len(wav) - frame_len, hop_len)
+    ])
+    # Adaptive threshold: max of fixed threshold and percentile
+    threshold = max(energy_threshold, np.percentile(energy, 30))
+    is_speech = energy > threshold
+
+    # Convert frame-level decisions to segments
+    raw_segments = []
+    in_speech = False
+    start_frame = 0
+    for i, s in enumerate(is_speech):
+        if s and not in_speech:
+            start_frame = i
+            in_speech = True
+        elif not s and in_speech:
+            start_t = start_frame * 0.010
+            end_t = i * 0.010
+            if end_t - start_t >= min_speech_dur:
+                raw_segments.append((start_t, end_t))
+            in_speech = False
+    if in_speech:
+        start_t = start_frame * 0.010
+        end_t = len(is_speech) * 0.010
+        if end_t - start_t >= min_speech_dur:
+            raw_segments.append((start_t, end_t))
+
+    if not raw_segments:
+        # Fallback: single segment covering all
+        return [["1", "男 Male", "中年 Adult", 0.0, round(total_dur, 2)]]
+
+    # Merge segments with small gaps
+    merged = [raw_segments[0]]
+    for seg in raw_segments[1:]:
+        gap = seg[0] - merged[-1][1]
+        if gap < min_silence_dur:
+            merged[-1] = (merged[-1][0], seg[1])
+        else:
+            merged.append(seg)
+
+    # ── Step 2: Extract CAM++ xvec per segment ──
+    campp = OnnxModel(CAMPP_MODEL_PATH)
+    embeddings = []
+    for start_t, end_t in merged:
+        s_idx = int(start_t * sr_vad)
+        e_idx = int(end_t * sr_vad)
+        seg_wav = wav[s_idx:e_idx]
+        if len(seg_wav) < sr_vad * 0.1:  # skip < 100ms
+            embeddings.append(np.zeros(192))
+            continue
+        xvec = campp(seg_wav)
+        embeddings.append(xvec.flatten())
+
+    embeddings = np.array(embeddings)
+
+    # ── Step 3: Cluster speakers ──
+    if len(merged) <= 1:
+        labels = [0]
+    else:
+        n_clusters = min(max(2, len(set(range(len(merged))))), 6)
+        # Estimate number of speakers: try 2-4, pick best silhouette
+        from sklearn.metrics import silhouette_score
+        best_score, best_labels = -1, None
+        for n_c in range(2, min(len(merged), 5) + 1):
+            try:
+                clust = AgglomerativeClustering(
+                    n_clusters=n_c, metric='cosine', linkage='average'
+                )
+                labs = clust.fit_predict(embeddings)
+                if len(set(labs)) > 1:
+                    score = silhouette_score(embeddings, labs, metric='cosine')
+                    if score > best_score:
+                        best_score = score
+                        best_labels = labs
+            except Exception:
+                continue
+        labels = best_labels if best_labels is not None else [0] * len(merged)
+
+    # ── Step 4: Gender estimation via F0 ──
+    gender_by_speaker = {}
+    for i, (start_t, end_t) in enumerate(merged):
+        spk = int(labels[i]) + 1
+        if spk in gender_by_speaker:
+            continue
+        s_idx = int(start_t * sr_vad)
+        e_idx = int(end_t * sr_vad)
+        seg_wav = wav[s_idx:e_idx]
+        try:
+            f0, _, _ = librosa.pyin(
+                seg_wav, fmin=60, fmax=500, sr=sr_vad,
+                frame_length=2048
+            )
+            f0_valid = f0[~np.isnan(f0)]
+            if len(f0_valid) > 0:
+                median_f0 = np.median(f0_valid)
+                gender_by_speaker[spk] = "女 Female" if median_f0 > 165 else "男 Male"
+            else:
+                gender_by_speaker[spk] = "男 Male"
+        except Exception:
+            gender_by_speaker[spk] = "男 Male"
+
+    # ── Build result table ──
+    result = []
+    for i, (start_t, end_t) in enumerate(merged):
+        spk = int(labels[i]) + 1
+        dur = round(end_t - start_t, 2)
+        gender = gender_by_speaker.get(spk, "男 Male")
+        result.append([
+            str(spk), gender, "中年 Adult",
+            round(start_t, 2), dur,
+        ])
+
+    return result
+
 
 # ──────────────────────────────────────────────
 # Event handlers
@@ -406,6 +547,49 @@ def on_synthesize(
     return wav_path, vid_path, f"✅ Done in {elapsed:.1f}s"
 
 
+def on_auto_detect(ref_audio, ref_video):
+    """Auto-detect dialogue segments from reference audio or video."""
+    audio_path = None
+
+    if ref_audio:
+        audio_path = ref_audio
+    elif ref_video:
+        # Extract audio from video via ffmpeg
+        import subprocess
+        tmp_wav = os.path.join(OUTPUT_DIR, f"_tmp_extracted_{int(time.time())}.wav")
+        try:
+            subprocess.run([
+                "ffmpeg", "-y", "-i", ref_video,
+                "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
+                tmp_wav
+            ], check=True, capture_output=True)
+            audio_path = tmp_wav
+        except Exception as e:
+            raise gr.Error(f"⚠️ Failed to extract audio: {e}")
+    else:
+        raise gr.Error("⚠️ Please upload Reference Audio or Video first")
+
+    try:
+        dialogue_table = auto_detect_dialogue(audio_path)
+    except Exception as e:
+        raise gr.Error(f"⚠️ Auto-detection failed: {e}")
+    finally:
+        # Clean up extracted audio
+        if ref_video and audio_path and audio_path != ref_audio:
+            try:
+                os.unlink(audio_path)
+            except Exception:
+                pass
+
+    n_speakers = len(set(row[0] for row in dialogue_table))
+    scene = "对话 Dialogue" if n_speakers == 2 else "多人 Multi-Speaker"
+    return (
+        scene,           # scene_type → auto switch to dialogue mode
+        dialogue_table,  # dialogue_df
+        f"✅ Detected {len(dialogue_table)} segments, {n_speakers} speakers",
+    )
+
+
 def on_clear_demo():
     """Clear the demo selection — reset to custom mode."""
     return (
@@ -477,10 +661,16 @@ def build_ui():
 
                 # ── Multi-speaker controls (对话/多人) ──
                 with gr.Column(visible=False) as dialogue_col:
-                    gr.Markdown(
-                        "### 🗣️ Dialogue Segments\n"
-                        "*Each row = one speaker turn. Add/remove rows as needed.*"
-                    )
+                    with gr.Row():
+                        gr.Markdown(
+                            "### 🗣️ Dialogue Segments\n"
+                            "*Each row = one speaker turn. Add/remove rows as needed.*"
+                        )
+                        detect_btn = gr.Button(
+                            "🔍 Auto-Detect from Audio/Video",
+                            size="sm", variant="secondary",
+                        )
+                    detect_status = gr.Markdown(value="", visible=True)
                     dialogue_df = gr.Dataframe(
                         headers=["Speaker", "Gender", "Age", "Start(s)", "Duration(s)"],
                         datatype=["str", "str", "str", "number", "number"],
@@ -547,6 +737,13 @@ def build_ui():
 
         demo_table.select(on_demo_select, outputs=form_outputs)
         clear_btn.click(on_clear_demo, outputs=form_outputs)
+
+        # Auto-detect dialogue from audio/video
+        detect_btn.click(
+            on_auto_detect,
+            inputs=[ref_audio, ref_video],
+            outputs=[scene_type, dialogue_df, detect_status],
+        )
 
         # Synthesize
         synth_btn.click(
