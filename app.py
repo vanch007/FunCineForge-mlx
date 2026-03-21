@@ -599,20 +599,93 @@ def on_synthesize(
             video_path = os.path.join(OUTPUT_DIR, f"{utt_id}_input.mp4")
             shutil.copy2(video_file, video_path)
 
-    data = build_jsonl_item(
-        utt=utt_id, text=text,
-        clue=clue or "A speaker speaks clearly with natural emotion.",
-        scene_type=TYPE_MAP.get(scene_type, "独白"),
-        vocal_path=vocal_path, video_path=video_path,
-        face_path=face_path, dialogue=dialogue,
-        speech_length=speech_length,
-    )
+    MAX_CHUNK_FRAMES = 375  # ~15s: model works best within this range
 
     t0 = time.time()
-    wav_path, vid_path = run_inference(
-        data, seed=int(seed), min_len=int(min_len),
-        max_len=int(max_len), sampling=sampling
-    )
+
+    if speech_length > MAX_CHUNK_FRAMES and is_dialogue and len(dialogue) > 1:
+        # Chunked synthesis for long videos
+        import soundfile as sf
+        logger.info(f"speech_length={speech_length} exceeds {MAX_CHUNK_FRAMES}, using chunked synthesis")
+
+        # Split dialogue into chunks of max ~15s
+        chunks = []
+        cur_chunk = []
+        chunk_base = 0.0
+        for seg in dialogue:
+            seg_end = seg["start"] + seg["duration"]
+            if seg_end - chunk_base > MAX_CHUNK_FRAMES / 25.0 and cur_chunk:
+                chunks.append(cur_chunk)
+                cur_chunk = [seg]
+                chunk_base = seg["start"]
+            else:
+                cur_chunk.append(seg)
+        if cur_chunk:
+            chunks.append(cur_chunk)
+
+        chunk_wavs = []
+        vid_path = None
+        for ci, chunk in enumerate(chunks):
+            # Make chunk dialogue relative to chunk start
+            cbase = chunk[0]["start"]
+            chunk_dlg = [
+                {**s, "start": s["start"] - cbase}
+                for s in chunk
+            ]
+            c_end = max(d["start"] + d["duration"] for d in chunk_dlg)
+            c_sl = max(50, int(c_end * 25))
+
+            c_face = create_empty_face_pkl(c_sl) if not is_demo else face_path
+            c_data = build_jsonl_item(
+                utt=f"{utt_id}_c{ci}", text=text, clue=clue or "A speaker speaks clearly.",
+                scene_type=TYPE_MAP.get(scene_type, "独白"),
+                vocal_path=vocal_path, video_path=video_path,
+                face_path=c_face, dialogue=chunk_dlg, speech_length=c_sl,
+            )
+            c_wav, c_vid = run_inference(
+                c_data, seed=int(seed), min_len=int(min_len),
+                max_len=int(max_len), sampling=sampling
+            )
+            if c_wav:
+                chunk_wavs.append(c_wav)
+            if c_vid and not vid_path:
+                vid_path = c_vid
+            if not is_demo and c_face != face_path:
+                try: os.unlink(c_face)
+                except: pass
+            progress(0.5 + 0.4 * (ci + 1) / len(chunks), desc=f"Chunk {ci+1}/{len(chunks)}")
+
+        # Concatenate chunks
+        if chunk_wavs:
+            all_audio = []
+            sr_out = 24000
+            for w in chunk_wavs:
+                audio_data, sr_out = sf.read(w)
+                if audio_data.ndim > 1:
+                    audio_data = audio_data.mean(axis=1)
+                all_audio.append(audio_data)
+            import numpy as np
+            combined = np.concatenate(all_audio)
+            wav_path = os.path.join(OUTPUT_DIR, "wav", f"{utt_id}_combined.wav")
+            os.makedirs(os.path.dirname(wav_path), exist_ok=True)
+            sf.write(wav_path, combined, sr_out, subtype='PCM_16')
+            logger.info(f"Combined {len(chunks)} chunks: {len(combined)/sr_out:.1f}s")
+        else:
+            wav_path = None
+    else:
+        # Single-shot synthesis (short content)
+        data = build_jsonl_item(
+            utt=utt_id, text=text,
+            clue=clue or "A speaker speaks clearly with natural emotion.",
+            scene_type=TYPE_MAP.get(scene_type, "独白"),
+            vocal_path=vocal_path, video_path=video_path,
+            face_path=face_path, dialogue=dialogue,
+            speech_length=speech_length,
+        )
+        wav_path, vid_path = run_inference(
+            data, seed=int(seed), min_len=int(min_len),
+            max_len=int(max_len), sampling=sampling
+        )
     elapsed = time.time() - t0
 
     # Clean up temp face pkl (custom mode only)
