@@ -253,12 +253,38 @@ class FunCineForgeLM(nn.Module):
             if use_mlx:
                 try:
                     from funcineforge.models.utils.mlx_llm_decoder import MLXLLMDecoder
-                    mlx_model_path = kwargs.get("mlx_model_path",
-                        os.path.join(os.path.dirname(kwargs.get("lm_ckpt_path", "")),
-                                     "..", "mlx_qwen2"))
-                    custom_weights_path = kwargs.get("mlx_custom_weights_path",
-                        os.path.join(os.path.dirname(kwargs.get("lm_ckpt_path", "")),
-                                     "..", "hf_qwen2_backbone", "custom_weights.pt"))
+
+                    # Resolve MLX model path: explicit config > local derivation > HuggingFace
+                    MLX_HF_REPO = "vanch007/FunCineForge-mlx-qwen2"
+                    mlx_model_path = kwargs.get("mlx_model_path", "")
+                    if not mlx_model_path or not os.path.exists(mlx_model_path):
+                        # Try local path relative to lm_ckpt_path
+                        local_mlx = os.path.join(
+                            os.path.dirname(kwargs.get("lm_ckpt_path", "")),
+                            "..", "mlx_qwen2")
+                        if os.path.exists(local_mlx):
+                            mlx_model_path = local_mlx
+                        else:
+                            # Download from HuggingFace
+                            from huggingface_hub import snapshot_download
+                            logging.info(f"Downloading MLX model from {MLX_HF_REPO}...")
+                            mlx_model_path = snapshot_download(MLX_HF_REPO)
+                            logging.info(f"MLX model downloaded to {mlx_model_path}")
+
+                    # custom_weights.pt is inside the same repo
+                    custom_weights_path = kwargs.get("mlx_custom_weights_path", "")
+                    if not custom_weights_path or not os.path.exists(custom_weights_path):
+                        cw_in_mlx = os.path.join(mlx_model_path, "custom_weights.pt")
+                        local_cw = os.path.join(
+                            os.path.dirname(kwargs.get("lm_ckpt_path", "")),
+                            "..", "hf_qwen2_backbone", "custom_weights.pt")
+                        if os.path.exists(cw_in_mlx):
+                            custom_weights_path = cw_in_mlx
+                        elif os.path.exists(local_cw):
+                            custom_weights_path = local_cw
+                        else:
+                            custom_weights_path = cw_in_mlx  # from HF download
+
                     self.llm_generator = MLXLLMDecoder(
                         mlx_model_path=mlx_model_path,
                         custom_weights_path=custom_weights_path,
