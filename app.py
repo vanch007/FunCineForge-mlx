@@ -343,7 +343,15 @@ def on_synthesize(
             "age": AGE_MAP.get(age, "adult"),
         }]
 
-    speech_length = estimate_speech_length(text)
+    # Compute speech_length from dialogue timing in multi-speaker mode,
+    # or from text length in single-speaker mode.
+    # This is critical: speech_length MUST align with dialogue segment timing,
+    # otherwise the model loses speaker assignment after the dialogue window.
+    if is_dialogue and dialogue:
+        max_end = max(seg["start"] + seg["duration"] for seg in dialogue)
+        speech_length = max(50, int(max_end * 25))  # 25 fps
+    else:
+        speech_length = estimate_speech_length(text)
 
     # Demo mode: use demo's reference files
     is_demo = demo_key and demo_key.startswith("demo:")
