@@ -269,11 +269,15 @@ def on_synthesize(
     vocal_file, video_file, demo_key,
     seed, min_len, max_len, sampling
 ):
-    """Unified synthesis handler — works for both demo and custom."""
+    """Unified synthesis handler — works for both demo and custom.
+    
+    Demo mode: uses demo reference audio/video/face, but ALWAYS respects user's
+    text, clue, scene type, gender, and age from the UI form.
+    """
     if not text:
         raise gr.Error("⚠️ Please enter text to synthesize")
 
-    # Check if this is a demo item
+    # Check if this is a demo item (for reference audio/video/face only)
     is_demo = demo_key and demo_key.startswith("demo:")
     if is_demo:
         utt = demo_key.split(":", 1)[1]
@@ -282,21 +286,32 @@ def on_synthesize(
         if item is None:
             raise gr.Error(f"⚠️ Demo item '{utt}' not found")
 
+        # Use demo's reference files but user's text/clue/settings
+        vocal_path = resolve_path(item["vocal"])
+        video_path = resolve_path(item["video"])
+        face_path = resolve_path(item["face"])
+        dialogue = item["dialogue"]
+        # Recalculate speech_length based on user's text, not demo's original
+        speech_length = estimate_speech_length(text)
+        utt_id = f"ref_{utt}"
+
         data = build_jsonl_item(
-            utt=item["utt"], text=item["text"], clue=item["clue"],
-            scene_type=item["type"],
-            vocal_path=resolve_path(item["vocal"]),
-            video_path=resolve_path(item["video"]),
-            face_path=resolve_path(item["face"]),
-            dialogue=item["dialogue"],
-            speech_length=item["speech_length"],
+            utt=utt_id,
+            text=text,                                    # User's text, NOT demo's
+            clue=clue or item["clue"],                    # User's clue, fallback demo's
+            scene_type=TYPE_MAP.get(scene_type, "独白"),   # User's scene type
+            vocal_path=vocal_path,
+            video_path=video_path,
+            face_path=face_path,
+            dialogue=dialogue,
+            speech_length=speech_length,
         )
     else:
         # Custom mode
         if vocal_file is None:
             raise gr.Error("⚠️ Please upload a reference audio file")
 
-        utt = f"custom_{int(time.time())}"
+        utt_id = f"custom_{int(time.time())}"
         speech_length = estimate_speech_length(text)
 
         try:
@@ -317,11 +332,11 @@ def on_synthesize(
         video_path = ""
         if video_file is not None:
             import shutil
-            video_path = os.path.join(OUTPUT_DIR, f"{utt}_input.mp4")
+            video_path = os.path.join(OUTPUT_DIR, f"{utt_id}_input.mp4")
             shutil.copy2(video_file, video_path)
 
         data = build_jsonl_item(
-            utt=utt, text=text,
+            utt=utt_id, text=text,
             clue=clue or "A speaker speaks clearly with natural emotion.",
             scene_type=TYPE_MAP.get(scene_type, "独白"),
             vocal_path=vocal_file, video_path=video_path,
