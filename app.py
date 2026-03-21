@@ -718,6 +718,12 @@ def place_audio_on_timeline(generated_wav, orig_segments, bgm_path):
     gen_audio, gen_sr = sf.read(generated_wav)
     bgm_audio, bgm_sr = sf.read(bgm_path)
 
+    # Convert to mono if stereo
+    if gen_audio.ndim > 1:
+        gen_audio = gen_audio.mean(axis=1)
+    if bgm_audio.ndim > 1:
+        bgm_audio = bgm_audio.mean(axis=1)
+
     # Resample BGM to match generated audio sample rate if needed
     if bgm_sr != gen_sr:
         bgm_audio = librosa.resample(bgm_audio, orig_sr=bgm_sr, target_sr=gen_sr)
@@ -727,7 +733,7 @@ def place_audio_on_timeline(generated_wav, orig_segments, bgm_path):
     output = np.zeros(out_len, dtype=np.float32)
 
     # Copy BGM as base at 50% volume
-    output[:len(bgm_audio)] = bgm_audio[:out_len] * 0.5
+    output[:out_len] = bgm_audio[:out_len] * 0.5
 
     # Split generated audio by compact segment durations and place at original positions
     gen_cursor = 0
