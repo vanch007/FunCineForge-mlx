@@ -677,9 +677,19 @@ def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
 
         # ── Step 2: ASR on vocals only ──
         progress(0.3, desc="Transcribing vocals...")
-        import whisper
-        asr_model = whisper.load_model("base")
-        asr_result = asr_model.transcribe(vocals_path, language=None)
+        try:
+            import mlx_whisper
+            asr_result = mlx_whisper.transcribe(
+                vocals_path,
+                path_or_hf_repo='mlx-community/whisper-large-v3-turbo',
+                language=None,
+            )
+            logger.info("ASR: using mlx-whisper large-v3-turbo (MLX-native)")
+        except ImportError:
+            import whisper
+            asr_model = whisper.load_model("base")
+            asr_result = asr_model.transcribe(vocals_path, language=None)
+            logger.info("ASR: using whisper base (fallback)")
         text = asr_result["text"].strip()
         lang = asr_result.get("language", "unknown")
         logger.info(f"ASR result: lang={lang}, text={text[:100]}")
