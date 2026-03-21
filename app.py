@@ -251,17 +251,20 @@ DEFAULT_DIALOGUE_TABLE = [
 
 
 def compact_dialogue_timeline(segments, gap=0.3):
-    """Compact dialogue segments into continuous timeline with small gaps.
+    """Merge short segments into usable speech blocks, then compact into continuous timeline.
 
-    The model expects dialogue segments to be near-continuous (like demo data),
-    not at the original scattered video positions.
+    The model expects segments of ~2-5s each (like demo data). Auto-detected
+    segments are often tiny fragments (0.3-0.7s). This function:
+      1. Merges adjacent same-speaker segments
+      2. Merges remaining short segments (< min_dur) with their neighbors
+      3. Compacts the timeline by removing large gaps
 
     Args:
         segments: list of [spk, gender, age, start, duration] from auto-detect
-        gap: small gap between segments in seconds
+        gap: small gap between segments in seconds for compacted output
 
     Returns:
-        compacted_segments: same format with adjusted start times
+        compacted_segments: same format with adjusted start/duration
     """
     if not segments:
         return segments
@@ -269,9 +272,48 @@ def compact_dialogue_timeline(segments, gap=0.3):
     # Sort by original start time
     sorted_segs = sorted(segments, key=lambda s: float(s[3]))
 
+    # Step 1: Merge adjacent same-speaker segments and nearby segments (gap ≤ 2s)
+    merged = [list(sorted_segs[0])]
+    for seg in sorted_segs[1:]:
+        prev = merged[-1]
+        prev_end = float(prev[3]) + float(prev[4])
+        cur_start = float(seg[3])
+        gap_between = cur_start - prev_end
+        same_speaker = str(prev[0]) == str(seg[0])
+
+        # Merge if: same speaker, or gap < 2s
+        if same_speaker or gap_between < 2.0:
+            # Extend previous segment to cover this one
+            new_dur = (cur_start + float(seg[4])) - float(prev[3])
+            prev[4] = round(new_dur, 3)
+            # If different speaker, keep the one with longer duration
+            if not same_speaker and float(seg[4]) > float(prev[4]) / 2:
+                prev[0] = seg[0]  # Use the new speaker if segment is substantial
+        else:
+            merged.append(list(seg))
+
+    # Step 2: If any segment is still < 1s, merge with nearest neighbor
+    final = []
+    for seg in merged:
+        dur = float(seg[4])
+        if dur < 1.0 and final:
+            # Merge into previous
+            prev = final[-1]
+            prev_end = float(prev[3]) + float(prev[4])
+            new_dur = (float(seg[3]) + dur) - float(prev[3])
+            prev[4] = round(new_dur, 3)
+        else:
+            final.append(list(seg))
+
+    # If we ended up with nothing usable, use original
+    if not final:
+        final = [list(sorted_segs[0])]
+        final[0][4] = round(max(float(sorted_segs[-1][3]) + float(sorted_segs[-1][4]) - float(sorted_segs[0][3]), 1.0), 3)
+
+    # Step 3: Compact into continuous timeline
     compacted = []
     cursor = 0.0
-    for seg in sorted_segs:
+    for seg in final:
         dur = float(seg[4])
         compacted.append([seg[0], seg[1], seg[2], round(cursor, 3), round(dur, 3)])
         cursor += dur + gap
