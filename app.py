@@ -547,46 +547,97 @@ def on_synthesize(
     return wav_path, vid_path, f"✅ Done in {elapsed:.1f}s"
 
 
-def on_auto_detect(ref_audio, ref_video):
-    """Auto-detect dialogue segments from reference audio or video."""
-    audio_path = None
-
+def _extract_audio_from_source(ref_audio, ref_video):
+    """Get audio path from ref_audio or extract from ref_video."""
     if ref_audio:
-        audio_path = ref_audio
-    elif ref_video:
-        # Extract audio from video via ffmpeg
+        return ref_audio, False  # path, is_temp
+    if ref_video:
         import subprocess
         tmp_wav = os.path.join(OUTPUT_DIR, f"_tmp_extracted_{int(time.time())}.wav")
-        try:
-            subprocess.run([
-                "ffmpeg", "-y", "-i", ref_video,
-                "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
-                tmp_wav
-            ], check=True, capture_output=True)
-            audio_path = tmp_wav
-        except Exception as e:
-            raise gr.Error(f"⚠️ Failed to extract audio: {e}")
-    else:
+        subprocess.run([
+            "ffmpeg", "-y", "-i", ref_video,
+            "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
+            tmp_wav
+        ], check=True, capture_output=True)
+        return tmp_wav, True
+    return None, False
+
+
+def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
+    """Full auto-analysis: ASR + VAD + speaker diarization + gender detection.
+
+    Fills: text, clue, scene_type, gender, age, dialogue_df, detect_status.
+    """
+    try:
+        audio_path, is_temp = _extract_audio_from_source(ref_audio, ref_video)
+    except Exception as e:
+        raise gr.Error(f"⚠️ Failed to extract audio: {e}")
+    if not audio_path:
         raise gr.Error("⚠️ Please upload Reference Audio or Video first")
 
     try:
+        # ── Step 1: ASR transcription ──
+        progress(0.1, desc="Transcribing audio...")
+        import whisper
+        asr_model = whisper.load_model("base")
+        asr_result = asr_model.transcribe(audio_path, language=None)
+        text = asr_result["text"].strip()
+        lang = asr_result.get("language", "unknown")
+        logger.info(f"ASR result: lang={lang}, text={text[:100]}")
+
+        # ── Step 2: VAD + speaker diarization ──
+        progress(0.5, desc="Detecting speakers...")
         dialogue_table = auto_detect_dialogue(audio_path)
+
+        # ── Step 3: Derive scene type and speaker info ──
+        n_speakers = len(set(row[0] for row in dialogue_table))
+        n_segments = len(dialogue_table)
+
+        if n_speakers == 1:
+            scene = "独白 Monologue"
+        elif n_speakers == 2:
+            scene = "对话 Dialogue"
+        else:
+            scene = "多人 Multi-Speaker"
+
+        # First speaker's gender/age for single-speaker panel
+        first_gender = dialogue_table[0][1] if dialogue_table else "男 Male"
+        first_age = dialogue_table[0][2] if dialogue_table else "中年 Adult"
+
+        # ── Step 4: Generate clue description ──
+        progress(0.9, desc="Generating description...")
+        gender_desc = []
+        for spk_id in sorted(set(row[0] for row in dialogue_table)):
+            spk_rows = [r for r in dialogue_table if r[0] == spk_id]
+            g = spk_rows[0][1]  # e.g. "男 Male"
+            gender_en = "male" if "Male" in g else "female"
+            gender_desc.append(f"Speaker {spk_id}: {gender_en}")
+
+        lang_name = {"zh": "Chinese", "en": "English", "ja": "Japanese",
+                     "ko": "Korean"}.get(lang, lang)
+        clue = f"A {lang_name} {scene.split()[0]} scene with {n_speakers} speaker(s). " + \
+               ", ".join(gender_desc) + "."
+
+        status = f"✅ ASR ({lang_name}): {len(text)} chars | " + \
+                 f"{n_segments} segments, {n_speakers} speakers"
+
     except Exception as e:
-        raise gr.Error(f"⚠️ Auto-detection failed: {e}")
+        raise gr.Error(f"⚠️ Auto-analysis failed: {e}")
     finally:
-        # Clean up extracted audio
-        if ref_video and audio_path and audio_path != ref_audio:
+        if is_temp and audio_path:
             try:
                 os.unlink(audio_path)
             except Exception:
                 pass
 
-    n_speakers = len(set(row[0] for row in dialogue_table))
-    scene = "对话 Dialogue" if n_speakers == 2 else "多人 Multi-Speaker"
     return (
-        scene,           # scene_type → auto switch to dialogue mode
+        text,            # text
+        clue,            # clue
+        scene,           # scene_type
+        first_gender,    # gender (single-speaker)
+        first_age,       # age (single-speaker)
         dialogue_table,  # dialogue_df
-        f"✅ Detected {len(dialogue_table)} segments, {n_speakers} speakers",
+        status,          # detect_status
     )
 
 
@@ -661,16 +712,10 @@ def build_ui():
 
                 # ── Multi-speaker controls (对话/多人) ──
                 with gr.Column(visible=False) as dialogue_col:
-                    with gr.Row():
-                        gr.Markdown(
-                            "### 🗣️ Dialogue Segments\n"
-                            "*Each row = one speaker turn. Add/remove rows as needed.*"
-                        )
-                        detect_btn = gr.Button(
-                            "🔍 Auto-Detect from Audio/Video",
-                            size="sm", variant="secondary",
-                        )
-                    detect_status = gr.Markdown(value="", visible=True)
+                    gr.Markdown(
+                        "### 🗣️ Dialogue Segments\n"
+                        "*Each row = one speaker turn. Add/remove rows as needed.*"
+                    )
                     dialogue_df = gr.Dataframe(
                         headers=["Speaker", "Gender", "Age", "Start(s)", "Duration(s)"],
                         datatype=["str", "str", "str", "number", "number"],
@@ -686,6 +731,11 @@ def build_ui():
                     label="Reference Audio (voice timbre)", type="filepath",
                 )
                 ref_video = gr.Video(label="Video to Dub (optional)")
+                analyze_btn = gr.Button(
+                    "🔍 Auto-Analyze Audio/Video",
+                    variant="secondary", size="sm",
+                )
+                detect_status = gr.Markdown(value="")
 
         # ── Synthesize button ──
         synth_btn = gr.Button(
@@ -738,11 +788,12 @@ def build_ui():
         demo_table.select(on_demo_select, outputs=form_outputs)
         clear_btn.click(on_clear_demo, outputs=form_outputs)
 
-        # Auto-detect dialogue from audio/video
-        detect_btn.click(
-            on_auto_detect,
+        # Auto-analyze: ASR + VAD + speaker diarization
+        analyze_btn.click(
+            on_auto_analyze,
             inputs=[ref_audio, ref_video],
-            outputs=[scene_type, dialogue_df, detect_status],
+            outputs=[text, clue, scene_type, gender, age,
+                     dialogue_df, detect_status],
         )
 
         # Synthesize
