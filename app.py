@@ -251,13 +251,13 @@ DEFAULT_DIALOGUE_TABLE = [
 
 
 def compact_dialogue_timeline(segments, gap=0.3):
-    """Merge short segments into usable speech blocks, then compact into continuous timeline.
+    """Merge short adjacent segments, then compact into continuous timeline.
 
-    The model expects segments of ~2-5s each (like demo data). Auto-detected
-    segments are often tiny fragments (0.3-0.7s). This function:
-      1. Merges adjacent same-speaker segments
-      2. Merges remaining short segments (< min_dur) with their neighbors
-      3. Compacts the timeline by removing large gaps
+    The model expects segments of ~2-5s each (like demo data). This function:
+      1. Merges adjacent SAME-SPEAKER segments with small gaps (< 0.5s)
+      2. Caps merged segments at ~5s to match demo format
+      3. Ensures no segment is shorter than ~1s
+      4. Compacts the timeline by removing large gaps
 
     Args:
         segments: list of [spk, gender, age, start, duration] from auto-detect
@@ -269,10 +269,14 @@ def compact_dialogue_timeline(segments, gap=0.3):
     if not segments:
         return segments
 
+    MAX_SEG_DUR = 5.0   # Max duration per segment (demo avg ~2-5s)
+    MERGE_GAP = 0.5     # Only merge if gap is < this
+    MIN_SEG_DUR = 1.0   # Minimum useful segment duration
+
     # Sort by original start time
     sorted_segs = sorted(segments, key=lambda s: float(s[3]))
 
-    # Step 1: Merge adjacent same-speaker segments and nearby segments (gap ≤ 2s)
+    # Step 1: Merge adjacent same-speaker segments with short gaps, cap at MAX_SEG_DUR
     merged = [list(sorted_segs[0])]
     for seg in sorted_segs[1:]:
         prev = merged[-1]
@@ -280,37 +284,38 @@ def compact_dialogue_timeline(segments, gap=0.3):
         cur_start = float(seg[3])
         gap_between = cur_start - prev_end
         same_speaker = str(prev[0]) == str(seg[0])
+        merged_dur = (cur_start + float(seg[4])) - float(prev[3])
 
-        # Merge if: same speaker, or gap < 2s
-        if same_speaker or gap_between < 2.0:
-            # Extend previous segment to cover this one
-            new_dur = (cur_start + float(seg[4])) - float(prev[3])
-            prev[4] = round(new_dur, 3)
-            # If different speaker, keep the one with longer duration
-            if not same_speaker and float(seg[4]) > float(prev[4]) / 2:
-                prev[0] = seg[0]  # Use the new speaker if segment is substantial
+        # Merge only if: same speaker + short gap + won't exceed max duration
+        if same_speaker and gap_between < MERGE_GAP and merged_dur <= MAX_SEG_DUR:
+            prev[4] = round(merged_dur, 3)
         else:
             merged.append(list(seg))
 
-    # Step 2: If any segment is still < 1s, merge with nearest neighbor
+    # Step 2: Merge sub-1s segments into their neighbor (prefer next, then prev)
     final = []
-    for seg in merged:
+    for i, seg in enumerate(merged):
         dur = float(seg[4])
-        if dur < 1.0 and final:
-            # Merge into previous
+        if dur < MIN_SEG_DUR and final:
+            # Merge into previous if combined would be ≤ MAX_SEG_DUR
             prev = final[-1]
-            prev_end = float(prev[3]) + float(prev[4])
-            new_dur = (float(seg[3]) + dur) - float(prev[3])
-            prev[4] = round(new_dur, 3)
-        else:
-            final.append(list(seg))
+            combined = (float(seg[3]) + dur) - float(prev[3])
+            if combined <= MAX_SEG_DUR:
+                prev[4] = round(combined, 3)
+                continue
+        final.append(list(seg))
 
-    # If we ended up with nothing usable, use original
+    # If still have tiny segments at the start, merge forward
+    if final and float(final[0][4]) < MIN_SEG_DUR and len(final) > 1:
+        final[1][3] = final[0][3]
+        final[1][4] = round(float(final[1][4]) + float(final[0][4]) + 0.3, 3)
+        final.pop(0)
+
     if not final:
         final = [list(sorted_segs[0])]
         final[0][4] = round(max(float(sorted_segs[-1][3]) + float(sorted_segs[-1][4]) - float(sorted_segs[0][3]), 1.0), 3)
 
-    # Step 3: Compact into continuous timeline
+    # Step 3: Compact into continuous timeline (remove large gaps)
     compacted = []
     cursor = 0.0
     for seg in final:
