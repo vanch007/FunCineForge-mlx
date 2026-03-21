@@ -57,6 +57,9 @@ def load_models(progress=gr.Progress()):
     if _MODEL is not None:
         return "✅ Models already loaded"
 
+    # Model configs use relative paths (e.g. ../tokenizer/) that expect CWD=exps/
+    os.chdir(EXP_DIR)
+
     device = get_device()
     progress(0.0, desc="Loading config...")
 
