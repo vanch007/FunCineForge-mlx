@@ -218,7 +218,7 @@ class FunCineForgeLM(nn.Module):
             text_embeds = self.llm.model.get_input_embeddings()(input_ids * text_flag) * text_flag.unsqueeze(-1)
         timespk_embeds = self.timespk_embed(input_ids * timespk_flag) * timespk_flag.unsqueeze(-1)
         codec_embs = self.codec_embed(input_ids * codec_flag) * codec_flag.unsqueeze(-1)
-        face_embs = self.face_linear(face_embs)
+        face_embs = self.face_linear(face_embs.to(self.face_linear.weight.dtype))
 
         inputs_embeds = text_embeds + timespk_embeds + codec_embs
 

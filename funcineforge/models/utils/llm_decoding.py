@@ -148,16 +148,10 @@ class LLMDecoder(nn.Module):
                 pred = torch.log_softmax(logp, dim=-1)
             if min_length is not None and i < min_length:
                 for x in custom_eos_token:
-                    if pred.dtype == torch.bfloat16:
-                        pred[x] = float(np.finfo(np.float16).min)
-                    else:
-                        pred[x] = float(np.finfo(np.float32).min)
+                    pred[x] = -1e4  # safe for fp16/bf16/fp32
             if avoid_token is not None and len(avoid_token) > 0:
                 for x in avoid_token:
-                    if pred.dtype == torch.bfloat16:
-                        pred[x] = float(np.finfo(np.float16).min)
-                    else:
-                        pred[x] = float(np.finfo(np.float32).min)
+                    pred[x] = -1e4
             top_id = self.sampling_ids(pred, sampling, out_tokens)[0].item()
 
             if top_id in custom_eos_token:
