@@ -135,6 +135,8 @@ class MLXLLMDecoder:
         Returns:
             (codec_tokens, hit_eos, states)
         """
+        from mlx_lm.models.cache import make_prompt_cache
+
         max_length = kwargs.get("max_length", 60 * 25)
         min_length = kwargs.get("min_length", 2 * 25)
         sampling = kwargs.get("sampling", True)
@@ -145,8 +147,11 @@ class MLXLLMDecoder:
         # Convert input embeddings from PyTorch → MLX (one-time cost)
         mlx_embeds = _torch_to_mlx(input_embeddings)
 
-        # Prefill: run full prefix through MLX model backbone (hidden states)
-        hidden = self.mlx_model.model(None, input_embeddings=mlx_embeds)
+        # Create KV cache for all transformer layers (critical for autoregressive coherence)
+        kv_cache = make_prompt_cache(self.mlx_model)
+
+        # Prefill: run full prefix through MLX model backbone WITH cache
+        hidden = self.mlx_model.model(None, cache=kv_cache, input_embeddings=mlx_embeds)
         mx.eval(hidden)
 
         # Apply codec_head to get logits: h @ codec_head.T
@@ -189,11 +194,11 @@ class MLXLLMDecoder:
 
             out_tokens.append(top_id)
 
-            # Next step: look up codec_embed for generated token + run backbone
+            # Next step: look up codec_embed for generated token + run backbone WITH cache
             next_emb = self.mlx_codec_embed[top_id + self.token_offset:top_id + self.token_offset + 1]
             next_emb = next_emb.reshape(1, 1, -1)
 
-            hidden = self.mlx_model.model(None, input_embeddings=next_emb)
+            hidden = self.mlx_model.model(None, cache=kv_cache, input_embeddings=next_emb)
             mx.eval(hidden)
 
             logp = hidden[:, -1, :] @ self.mlx_codec_head.T
