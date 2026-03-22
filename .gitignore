@@ -5,6 +5,7 @@ __pycache__/
 dist/
 build/
 *.egg
+exps/
 
 # === Model Weights & Data ===
 exps/funcineforge_zh_en/

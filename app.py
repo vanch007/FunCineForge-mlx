@@ -31,6 +31,7 @@ _KWARGS = {}
 _DEMO_ITEMS = []
 _BGM_PATH = None      # Background music track from vocal separation
 _ORIG_SEGMENTS = []   # Original video timestamps for post-synthesis placement
+_SEGMENT_TEXTS = []   # Per-segment translated text for chunked synthesis
 
 EXP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "exps")
 CKPT_DIR = os.path.join(EXP_DIR, "funcineforge_zh_en")
@@ -139,9 +140,10 @@ def load_demo_items():
 
 def get_demo_table():
     items = load_demo_items()
+    # Skip ref_ prefixed items (reference duplicates of originals)
     return [[i, it["utt"], it["type"],
              it["text"][:80] + ("..." if len(it["text"]) > 80 else "")]
-            for i, it in enumerate(items)]
+            for i, it in enumerate(items) if not it["utt"].startswith("ref_")]
 
 
 def resolve_path(rel_path):
@@ -243,11 +245,156 @@ AGE_REV.update({"青年": "青年 Youth", "中年": "中年 Adult",
 
 DIALOGUE_TYPES = {"对话 Dialogue", "多人 Multi-Speaker"}
 
-# Default dialogue table (2 speakers)
+# Default dialogue table (2 speakers) — unified 7-column format
+# Columns: Speaker | Gender | Age | Start(s) | Duration(s) | Text | Clue
 DEFAULT_DIALOGUE_TABLE = [
-    ["1", "男 Male", "中年 Adult", 0.0, 3.0],
-    ["2", "女 Female", "中年 Adult", 3.0, 3.0],
+    ["1", "男 Male", "中年 Adult", 0.0, 3.0, "Hello", "A male speaker greets warmly."],
+    ["2", "女 Female", "中年 Adult", 3.0, 3.0, "Hi there", "A female speaker responds cheerfully."],
 ]
+
+
+def generate_segment_clue(text, gender, age, spk_id, prev_text=None, next_text=None,
+                          lang='zh', n_speakers=2, position='middle'):
+    """Generate a context-aware clue for a dialogue segment.
+
+    Analyzes the text content to determine emotional tone, speaking style,
+    and generates a descriptive clue similar to the FunCineForge demo data.
+    """
+    gender_en = "male" if "Male" in gender else "female"
+    gender_zh = "男性" if "Male" in gender else "女性"
+
+    # Analyze text content for emotional cues
+    is_question = '?' in text or '？' in text or '吗' in text or '呢' in text or '么' in text
+    is_exclaim = '!' in text or '！' in text
+    is_short = len(text) <= 4
+    is_agreement = text.strip() in ('对', '嗯', '好', '是', '行', '没有', '没', '好的', '是的',
+                                     'yes', 'yeah', 'ok', 'sure', 'right', 'hmm')
+    has_emotion_words = any(w in text for w in ('哈', '呵', '嘿', '唉', '哎', '啊', '呀',
+                                                 '天哪', '我靠', '他妈', '操'))
+    is_angry = any(w in text for w in ('他妈', '操', '老子', '去你', '混蛋', '王八'))
+    is_commanding = any(w in text for w in ('给我', '快', '马上', '立刻', '必须', '不准', '别'))
+    is_mocking = any(w in text for w in ('还', '倒是', '你倒', '呵', '可笑'))
+    is_assertive = any(w in text for w in ('就是', '当然', '一定', '肯定', '绝对'))
+    is_worried = any(w in text for w in ('怕', '担心', '不行', '完了', '糟'))
+    is_narrative = len(text) > 20 and not is_question and not is_exclaim
+
+    # Determine position context
+    is_first = position == 'first'
+    is_responding = prev_text is not None
+
+    if lang in ('zh', 'ja', 'ko'):
+        # Chinese clue generation
+        spk_desc = f"说话人{spk_id}，一位{gender_zh}"
+
+        if is_agreement:
+            tones = ["语气简短地表示认同", "以简洁的附和回应", "用简短的肯定作为回应"]
+            import random
+            tone = random.choice(tones)
+        elif is_angry:
+            tone = "语气愤怒而强烈，带有明显的不满和攻击性"
+        elif is_commanding:
+            tone = "以命令式的口吻说话，语气急促而有力"
+        elif is_mocking:
+            tone = "语气带有嘲讽和不屑，暗含挑衅"
+        elif is_question and is_short:
+            tone = "以简短的反问回应，语气中带有质疑"
+        elif is_question:
+            tone = "以疑问的语气提出问题，带有好奇或追问的意味"
+        elif is_exclaim:
+            tone = "语气激动，带有强烈的情绪"
+        elif is_worried:
+            tone = "语气中透露出担忧和不安"
+        elif is_assertive:
+            tone = "语气坚定而自信，态度明确"
+        elif is_narrative and not is_responding:
+            tone = "以陈述的语气叙述，声音沉稳"
+        elif is_narrative and is_responding:
+            tone = "接着话题继续阐述，语气沉稳"
+        elif is_short and is_responding:
+            tone = "以简短的语句回应，语气平淡"
+        elif is_first:
+            tone = "率先开口说话，语气自然"
+        else:
+            tone = "以自然的语气说话，情绪清晰"
+
+        clue = f"{spk_desc}。{tone}。"
+    else:
+        # English clue generation
+        spk_desc = f"Speaker {spk_id}, an adult {gender_en}"
+
+        if is_agreement:
+            tone = "gives a brief, affirming response"
+        elif is_angry:
+            tone = "speaks with anger and aggression, voice sharp and forceful"
+        elif is_commanding:
+            tone = "delivers a command with urgency and authority"
+        elif is_mocking:
+            tone = "speaks with a mocking and dismissive tone"
+        elif is_question and is_short:
+            tone = "asks a brief, pointed question with a skeptical tone"
+        elif is_question:
+            tone = "asks a question with curiosity or interrogation"
+        elif is_exclaim:
+            tone = "exclaims with heightened emotion"
+        elif is_worried:
+            tone = "speaks with worry and concern in voice"
+        elif is_assertive:
+            tone = "speaks with confidence and conviction"
+        elif is_narrative and not is_responding:
+            tone = "narrates steadily with a calm, descriptive tone"
+        elif is_narrative and is_responding:
+            tone = "continues the discussion with a measured tone"
+        elif is_first:
+            tone = "initiates the conversation with a natural tone"
+        else:
+            tone = "speaks with natural emotion and clear intonation"
+
+        clue = f"{spk_desc}, {tone}."
+
+    return clue
+
+
+def translate_text(text, source='zh-CN', target='en'):
+    """Translate text using free Google Translate API.
+
+    Handles long text by splitting into chunks of max 4000 chars at sentence
+    boundaries. Returns translated text or original on failure.
+    """
+    import urllib.request, urllib.parse
+
+    MAX_CHUNK = 4000  # Google Translate API limit
+
+    def _do_translate(chunk):
+        url = ("https://translate.googleapis.com/translate_a/single"
+               f"?client=gtx&sl={source}&tl={target}&dt=t"
+               f"&q={urllib.parse.quote(chunk)}")
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        try:
+            resp = urllib.request.urlopen(req, timeout=15)
+            data = json.loads(resp.read())
+            return ''.join([item[0] for item in data[0] if item[0]])
+        except Exception as e:
+            logger.warning(f"Translation failed for chunk: {e}")
+            return chunk
+
+    if len(text) <= MAX_CHUNK:
+        return _do_translate(text)
+
+    # Split at sentence boundaries for long texts
+    import re
+    sentences = re.split(r'([。！？.!?])', text)
+    chunks = []
+    current = ''
+    for s in sentences:
+        if len(current) + len(s) > MAX_CHUNK and current:
+            chunks.append(current)
+            current = s
+        else:
+            current += s
+    if current:
+        chunks.append(current)
+
+    return ' '.join(_do_translate(c) for c in chunks)
 
 
 def compact_dialogue_timeline(segments, gap=0.3):
@@ -256,7 +403,7 @@ def compact_dialogue_timeline(segments, gap=0.3):
     The model expects segments of ~2-5s each (like demo data). This function:
       1. Merges adjacent SAME-SPEAKER segments with small gaps (< 0.5s)
       2. Caps merged segments at ~5s to match demo format
-      3. Ensures no segment is shorter than ~1s
+      3. Ensures no segment is shorter than ~1s (merges into same-speaker neighbor)
       4. Compacts the timeline by removing large gaps
 
     Args:
@@ -264,21 +411,23 @@ def compact_dialogue_timeline(segments, gap=0.3):
         gap: small gap between segments in seconds for compacted output
 
     Returns:
-        compacted_segments: same format with adjusted start/duration
+        (compacted_segments, merge_map) where merge_map[i] = list of original
+        segment indices that were merged into compacted segment i.
     """
     if not segments:
-        return segments
+        return segments, []
 
     MAX_SEG_DUR = 5.0   # Max duration per segment (demo avg ~2-5s)
     MERGE_GAP = 0.5     # Only merge if gap is < this
     MIN_SEG_DUR = 1.0   # Minimum useful segment duration
 
-    # Sort by original start time
-    sorted_segs = sorted(segments, key=lambda s: float(s[3]))
+    # Sort by original start time, keep track of original indices
+    indexed_segs = sorted(enumerate(segments), key=lambda x: float(x[1][3]))
 
     # Step 1: Merge adjacent same-speaker segments with short gaps, cap at MAX_SEG_DUR
-    merged = [list(sorted_segs[0])]
-    for seg in sorted_segs[1:]:
+    merged = [list(indexed_segs[0][1])]
+    merge_groups = [[indexed_segs[0][0]]]  # track which orig indices
+    for orig_idx, seg in indexed_segs[1:]:
         prev = merged[-1]
         prev_end = float(prev[3]) + float(prev[4])
         cur_start = float(seg[3])
@@ -289,31 +438,41 @@ def compact_dialogue_timeline(segments, gap=0.3):
         # Merge only if: same speaker + short gap + won't exceed max duration
         if same_speaker and gap_between < MERGE_GAP and merged_dur <= MAX_SEG_DUR:
             prev[4] = round(merged_dur, 3)
+            merge_groups[-1].append(orig_idx)
         else:
             merged.append(list(seg))
+            merge_groups.append([orig_idx])
 
-    # Step 2: Merge sub-1s segments into their neighbor (prefer next, then prev)
+    # Step 2: Merge sub-1s segments into SAME-SPEAKER neighbor only
     final = []
+    final_groups = []
     for i, seg in enumerate(merged):
         dur = float(seg[4])
         if dur < MIN_SEG_DUR and final:
-            # Merge into previous if combined would be ≤ MAX_SEG_DUR
             prev = final[-1]
+            same_speaker = str(prev[0]) == str(seg[0])
             combined = (float(seg[3]) + dur) - float(prev[3])
-            if combined <= MAX_SEG_DUR:
+            if same_speaker and combined <= MAX_SEG_DUR:
                 prev[4] = round(combined, 3)
+                final_groups[-1].extend(merge_groups[i])
                 continue
         final.append(list(seg))
+        final_groups.append(list(merge_groups[i]))
 
-    # If still have tiny segments at the start, merge forward
+    # If still have tiny segments at the start, only merge if same speaker
     if final and float(final[0][4]) < MIN_SEG_DUR and len(final) > 1:
-        final[1][3] = final[0][3]
-        final[1][4] = round(float(final[1][4]) + float(final[0][4]) + 0.3, 3)
-        final.pop(0)
+        if str(final[0][0]) == str(final[1][0]):
+            final[1][3] = final[0][3]
+            final[1][4] = round(float(final[1][4]) + float(final[0][4]) + 0.3, 3)
+            final_groups[1] = final_groups[0] + final_groups[1]
+            final.pop(0)
+            final_groups.pop(0)
 
     if not final:
-        final = [list(sorted_segs[0])]
-        final[0][4] = round(max(float(sorted_segs[-1][3]) + float(sorted_segs[-1][4]) - float(sorted_segs[0][3]), 1.0), 3)
+        all_orig = [idx for g in merge_groups for idx in g]
+        final = [list(indexed_segs[0][1])]
+        final[0][4] = round(max(float(indexed_segs[-1][1][3]) + float(indexed_segs[-1][1][4]) - float(indexed_segs[0][1][3]), 1.0), 3)
+        final_groups = [all_orig]
 
     # Step 3: Compact into continuous timeline (remove large gaps)
     compacted = []
@@ -323,12 +482,12 @@ def compact_dialogue_timeline(segments, gap=0.3):
         compacted.append([seg[0], seg[1], seg[2], round(cursor, 3), round(dur, 3)])
         cursor += dur + gap
 
-    return compacted
+    return compacted, final_groups
 
 CAMPP_MODEL_PATH = os.path.join(CKPT_DIR, "camplus.onnx")
 
 
-def auto_detect_dialogue(audio_path, min_speech_dur=0.3, min_silence_dur=0.4,
+def auto_detect_dialogue(audio_path, min_speech_dur=0.2, min_silence_dur=0.15,
                           energy_threshold=0.01):
     """Auto-detect dialogue segments from audio file.
 
@@ -342,7 +501,6 @@ def auto_detect_dialogue(audio_path, min_speech_dur=0.3, min_silence_dur=0.4,
     """
     import librosa
     from funcineforge.utils.load_utils import OnnxModel
-    from sklearn.cluster import AgglomerativeClustering
 
     sr_vad = 16000
     wav, _ = librosa.load(audio_path, sr=sr_vad, mono=True)
@@ -407,22 +565,33 @@ def auto_detect_dialogue(audio_path, min_speech_dur=0.3, min_silence_dur=0.4,
 
     embeddings = np.array(embeddings)
 
-    # ── Step 3: Cluster speakers ──
+    # ── Step 3: Cluster speakers using spectral clustering ──
+    # SpectralClustering on cosine affinity works better than agglomerative
+    # for CAM++ embeddings which have relatively high intra-speaker similarity.
+    from sklearn.preprocessing import normalize
+    from sklearn.cluster import SpectralClustering
+
     if len(merged) <= 1:
         labels = [0]
     else:
-        n_clusters = min(max(2, len(set(range(len(merged))))), 6)
+        emb_norm = normalize(embeddings, norm='l2')
+        # Build cosine affinity matrix (shifted to [0,1])
+        from sklearn.metrics.pairwise import cosine_similarity
+        sim = cosine_similarity(emb_norm)
+        affinity = (sim + 1) / 2  # cosine sim [-1,1] → [0,1]
+        np.fill_diagonal(affinity, 0)
+
         # Estimate number of speakers: try 2-4, pick best silhouette
         from sklearn.metrics import silhouette_score
         best_score, best_labels = -1, None
         for n_c in range(2, min(len(merged), 5) + 1):
             try:
-                clust = AgglomerativeClustering(
-                    n_clusters=n_c, metric='cosine', linkage='average'
+                clust = SpectralClustering(
+                    n_clusters=n_c, affinity='precomputed', random_state=42
                 )
-                labs = clust.fit_predict(embeddings)
+                labs = clust.fit_predict(affinity)
                 if len(set(labs)) > 1:
-                    score = silhouette_score(embeddings, labs, metric='cosine')
+                    score = silhouette_score(emb_norm, labs, metric='cosine')
                     if score > best_score:
                         best_score = score
                         best_labels = labs
@@ -492,27 +661,61 @@ def on_demo_select(evt: gr.SelectData):
     dlg = item["dialogue"]
     scene = TYPE_REV.get(item["type"], "独白 Monologue")
     is_dialogue = scene in DIALOGUE_TYPES
+    full_text = item["text"]
+    full_clue = item["clue"]
 
     # First speaker's gender/age for single-speaker panel
     first_gender = GENDER_REV.get(dlg[0]["gender"], "男 Male") if dlg else "男 Male"
     first_age = AGE_REV.get(dlg[0]["age"], "中年 Adult") if dlg else "中年 Adult"
 
-    # Build dialogue table from demo data
+    # Split text into sentences, then distribute among segments
+    import re
+    sentences = re.split(r'(?<=[.!?。！？])\s*', full_text.strip())
+    sentences = [s for s in sentences if s.strip()]
+
+    n_seg = len(dlg)
+    if n_seg == 1:
+        seg_texts = [full_text.strip()]
+    elif len(sentences) == n_seg:
+        seg_texts = sentences
+    elif len(sentences) > n_seg:
+        # More sentences than segments: distribute proportionally by duration
+        total_dur = sum(s.get("duration", 1.0) for s in dlg)
+        seg_texts = []
+        sent_idx = 0
+        for si, seg in enumerate(dlg):
+            frac = seg.get("duration", 1.0) / total_dur if total_dur > 0 else 1.0 / n_seg
+            n_sents = max(1, round(frac * len(sentences)))
+            if si == n_seg - 1:
+                # Last segment gets all remaining
+                seg_texts.append(' '.join(sentences[sent_idx:]))
+            else:
+                end = min(sent_idx + n_sents, len(sentences))
+                seg_texts.append(' '.join(sentences[sent_idx:end]))
+                sent_idx = end
+    else:
+        # Fewer sentences than segments: first segments get one each, rest empty
+        seg_texts = sentences + [''] * (n_seg - len(sentences))
+
+    # Build unified table (7 columns) from demo data
     dlg_table = []
-    for seg in dlg:
+    for i, seg in enumerate(dlg):
+        seg_text = seg_texts[i] if i < len(seg_texts) else ''
         dlg_table.append([
             str(seg.get("spk", "1")),
             GENDER_REV.get(seg["gender"], "男 Male"),
             AGE_REV.get(seg["age"], "中年 Adult"),
             float(seg.get("start", 0.0)),
             float(seg.get("duration", 3.0)),
+            seg_text,
+            full_clue,  # Global clue for each segment (user can edit per-segment)
         ])
     if not dlg_table:
         dlg_table = DEFAULT_DIALOGUE_TABLE
 
     return (
-        item["text"],                                   # text
-        item["clue"],                                   # clue
+        full_text,                                      # text
+        full_clue,                                      # clue
         scene,                                          # scene_type
         first_gender,                                   # gender (single mode)
         first_age,                                      # age (single mode)
@@ -533,25 +736,41 @@ def on_synthesize(
 
     Demo mode: uses demo reference audio/video/face, but ALWAYS respects
     user's text and UI form settings.
+
+    The dialogue_df now has 7 columns: Speaker|Gender|Age|Start|Duration|Text|Clue.
+    Per-segment text/clue are extracted from columns 5/6.
     """
+    global _SEGMENT_TEXTS
+
     if not text:
         raise gr.Error("⚠️ Please enter text to synthesize")
 
     is_dialogue = scene_type in DIALOGUE_TYPES
 
-    # Build dialogue array from UI
+    # Build dialogue array from unified 7-column table
     if is_dialogue and dialogue_df is not None and len(dialogue_df) > 0:
         dialogue = []
+        seg_texts_from_table = []
+        seg_clues_from_table = []
         for row in dialogue_df.values.tolist() if hasattr(dialogue_df, 'values') else dialogue_df:
             spk = str(row[0]) if row[0] else "1"
             g = GENDER_MAP.get(str(row[1]), str(row[1]))
             a = AGE_MAP.get(str(row[2]), str(row[2]))
             start = float(row[3]) if row[3] else 0.0
             dur = float(row[4]) if row[4] else 3.0
+            seg_text = str(row[5]) if len(row) > 5 and row[5] else ""
+            seg_clue = str(row[6]) if len(row) > 6 and row[6] else ""
             dialogue.append({
                 "start": start, "duration": dur,
                 "spk": spk, "gender": g, "age": a,
             })
+            seg_texts_from_table.append(seg_text)
+            seg_clues_from_table.append(seg_clue)
+        # Update _SEGMENT_TEXTS from the table (user may have edited)
+        _SEGMENT_TEXTS = seg_texts_from_table
+        # If text field is empty/generic, rebuild from table texts
+        if not text or text.startswith("[Speaker"):
+            text = ' '.join(t for t in seg_texts_from_table if t)
     else:
         # Single-speaker: one segment covering the whole duration
         est_dur = estimate_speech_length(text) / 25.0
@@ -561,11 +780,10 @@ def on_synthesize(
             "gender": GENDER_MAP.get(gender, "male"),
             "age": AGE_MAP.get(age, "adult"),
         }]
+        seg_clues_from_table = [clue] if clue else []
 
     # Compute speech_length from dialogue timing in multi-speaker mode,
     # or from text length in single-speaker mode.
-    # This is critical: speech_length MUST align with dialogue segment timing,
-    # otherwise the model loses speaker assignment after the dialogue window.
     if is_dialogue and dialogue:
         max_end = max(seg["start"] + seg["duration"] for seg in dialogue)
         speech_length = max(50, int(max_end * 25))  # 25 fps
@@ -608,24 +826,27 @@ def on_synthesize(
         import soundfile as sf
         logger.info(f"speech_length={speech_length} exceeds {MAX_CHUNK_FRAMES}, using chunked synthesis")
 
-        # Split dialogue into chunks of max ~15s
-        chunks = []
+        # Split dialogue into chunks of max ~15s, tracking segment indices
+        chunks = []       # list of (seg_list, seg_index_list)
         cur_chunk = []
+        cur_indices = []
         chunk_base = 0.0
-        for seg in dialogue:
+        for si, seg in enumerate(dialogue):
             seg_end = seg["start"] + seg["duration"]
             if seg_end - chunk_base > MAX_CHUNK_FRAMES / 25.0 and cur_chunk:
-                chunks.append(cur_chunk)
+                chunks.append((cur_chunk, cur_indices))
                 cur_chunk = [seg]
+                cur_indices = [si]
                 chunk_base = seg["start"]
             else:
                 cur_chunk.append(seg)
+                cur_indices.append(si)
         if cur_chunk:
-            chunks.append(cur_chunk)
+            chunks.append((cur_chunk, cur_indices))
 
         chunk_wavs = []
         vid_path = None
-        for ci, chunk in enumerate(chunks):
+        for ci, (chunk, chunk_seg_indices) in enumerate(chunks):
             # Make chunk dialogue relative to chunk start
             cbase = chunk[0]["start"]
             chunk_dlg = [
@@ -635,9 +856,36 @@ def on_synthesize(
             c_end = max(d["start"] + d["duration"] for d in chunk_dlg)
             c_sl = max(50, int(c_end * 25))
 
+            # Per-chunk text: use segment-level translations if available
+            if _SEGMENT_TEXTS and len(_SEGMENT_TEXTS) == len(dialogue):
+                chunk_text = ' '.join(_SEGMENT_TEXTS[i] for i in chunk_seg_indices if i < len(_SEGMENT_TEXTS))
+            else:
+                chunk_text = text  # fallback to full text
+
+            # Per-chunk clue: combine per-segment clues from the unified table
+            chunk_seg_clues = [seg_clues_from_table[i] for i in chunk_seg_indices
+                               if i < len(seg_clues_from_table) and seg_clues_from_table[i]]
+            if chunk_seg_clues:
+                # Use the per-segment clues from the table (user-editable)
+                chunk_clue = ' '.join(chunk_seg_clues)
+            else:
+                # Fallback: auto-generate from speaker metadata
+                chunk_spk_info = {}
+                for s in chunk_dlg:
+                    spk_id = s.get("spk", "1")
+                    if spk_id not in chunk_spk_info:
+                        chunk_spk_info[spk_id] = {
+                            "gender": s.get("gender", "male"),
+                            "age": s.get("age", "adult"),
+                        }
+                spk_descs = [f"Speaker {sid} is an {info['age']} {info['gender']}"
+                             for sid, info in sorted(chunk_spk_info.items())]
+                chunk_clue = f"{'. '.join(spk_descs)}. Natural emotion and clear intonation."
+
             c_face = create_empty_face_pkl(c_sl) if not is_demo else face_path
             c_data = build_jsonl_item(
-                utt=f"{utt_id}_c{ci}", text=text, clue=clue or "A speaker speaks clearly.",
+                utt=f"{utt_id}_c{ci}", text=chunk_text,
+                clue=chunk_clue,
                 scene_type=TYPE_MAP.get(scene_type, "独白"),
                 vocal_path=vocal_path, video_path=video_path,
                 face_path=c_face, dialogue=chunk_dlg, speech_length=c_sl,
@@ -653,7 +901,7 @@ def on_synthesize(
             if not is_demo and c_face != face_path:
                 try: os.unlink(c_face)
                 except: pass
-            progress(0.5 + 0.4 * (ci + 1) / len(chunks), desc=f"Chunk {ci+1}/{len(chunks)}")
+            logger.info(f"Chunk {ci+1}/{len(chunks)} done")
 
         # Concatenate chunks
         if chunk_wavs:
@@ -890,7 +1138,7 @@ def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
 
     Fills: text, clue, scene_type, gender, age, dialogue_df, detect_status, ref_audio.
     """
-    global _BGM_PATH, _ORIG_SEGMENTS
+    global _BGM_PATH, _ORIG_SEGMENTS, _SEGMENT_TEXTS
 
     try:
         audio_path, is_temp = _extract_audio_from_source(ref_audio, ref_video)
@@ -912,7 +1160,7 @@ def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
             _BGM_PATH = None
             vocals_path = audio_path
 
-        # ── Step 2: ASR on vocals only ──
+        # ── Step 2: ASR on vocals only (with segment timestamps) ──
         progress(0.3, desc="Transcribing vocals...")
         try:
             import mlx_whisper
@@ -929,29 +1177,191 @@ def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
             logger.info("ASR: using whisper base (fallback)")
         text = asr_result["text"].strip()
         lang = asr_result.get("language", "unknown")
-        logger.info(f"ASR result: lang={lang}, text={text[:100]}")
+        asr_segments = asr_result.get("segments", [])
+        logger.info(f"ASR result: lang={lang}, {len(asr_segments)} segments, text={text[:100]}")
 
-        # ── Step 3: VAD + speaker diarization on vocals ──
+        # ── Step 3: ASR-segment-based speaker diarization ──
+        # Use ASR sentence boundaries (more accurate than energy VAD) for speaker embedding.
+        # Each ASR segment gets its own CAM++ xvec → SpectralClustering → speaker label.
         progress(0.6, desc="Detecting speakers...")
-        dialogue_table = auto_detect_dialogue(vocals_path)
+
+        import librosa
+        from funcineforge.utils.load_utils import OnnxModel
+        from sklearn.preprocessing import normalize
+        from sklearn.cluster import SpectralClustering
+        from sklearn.metrics.pairwise import cosine_similarity
+        from sklearn.metrics import silhouette_score
+
+        sr_vad = 16000
+        wav, _ = librosa.load(vocals_path, sr=sr_vad, mono=True)
+
+        # Extract CAM++ xvec per ASR segment
+        campp = OnnxModel(CAMPP_MODEL_PATH)
+        asr_times = []  # (start, end, text) per valid ASR segment
+        embeddings = []
+        for aseg in asr_segments:
+            a_start = aseg.get('start', 0)
+            a_end = aseg.get('end', a_start)
+            a_text = aseg.get('text', '').strip()
+            if a_end - a_start < 0.15 or not a_text:
+                continue
+            s_idx = int(a_start * sr_vad)
+            e_idx = int(a_end * sr_vad)
+            seg_wav = wav[s_idx:e_idx]
+            if len(seg_wav) < sr_vad * 0.15:
+                continue
+            xvec = campp(seg_wav)
+            embeddings.append(xvec.flatten())
+            asr_times.append((a_start, a_end, a_text))
+
+        if not asr_times:
+            # Fallback: single segment
+            asr_times = [(0, len(wav)/sr_vad, text)]
+            embeddings = [np.zeros(192)]
+
+        embeddings = np.array(embeddings)
+
+        # Cluster speakers
+        if len(asr_times) <= 1:
+            labels = [0]
+        else:
+            emb_norm = normalize(embeddings, norm='l2')
+            sim = cosine_similarity(emb_norm)
+            affinity = (sim + 1) / 2
+            np.fill_diagonal(affinity, 0)
+
+            best_score, best_labels = -1, None
+            for n_c in range(2, min(len(asr_times), 5) + 1):
+                try:
+                    clust = SpectralClustering(
+                        n_clusters=n_c, affinity='precomputed', random_state=42
+                    )
+                    labs = clust.fit_predict(affinity)
+                    if len(set(labs)) > 1:
+                        score = silhouette_score(emb_norm, labs, metric='cosine')
+                        if score > best_score:
+                            best_score = score
+                            best_labels = labs
+                except Exception:
+                    continue
+            labels = best_labels if best_labels is not None else [0] * len(asr_times)
+
+        # Gender estimation via F0
+        gender_by_speaker = {}
+        for i, (a_start, a_end, _) in enumerate(asr_times):
+            spk = int(labels[i]) + 1
+            if spk in gender_by_speaker:
+                continue
+            seg_wav = wav[int(a_start * sr_vad):int(a_end * sr_vad)]
+            try:
+                f0, _, _ = librosa.pyin(seg_wav, fmin=60, fmax=500, sr=sr_vad, frame_length=2048)
+                f0_valid = f0[~np.isnan(f0)]
+                if len(f0_valid) > 0:
+                    gender_by_speaker[spk] = "女 Female" if np.median(f0_valid) > 165 else "男 Male"
+                else:
+                    gender_by_speaker[spk] = "男 Male"
+            except Exception:
+                gender_by_speaker[spk] = "男 Male"
+
+        # Build dialogue table and segment texts from ASR segments directly
+        dialogue_table = []
+        _SEGMENT_TEXTS = []
+        for i, (a_start, a_end, a_text) in enumerate(asr_times):
+            spk = int(labels[i]) + 1
+            gender = gender_by_speaker.get(spk, "男 Male")
+            dialogue_table.append([
+                str(spk), gender, "中年 Adult",
+                round(a_start, 2), round(a_end - a_start, 2),
+            ])
+            _SEGMENT_TEXTS.append(a_text)
+
+        logger.info(f"ASR-based diarization: {len(asr_times)} segments, "
+                     f"{len(set(labels))} speakers")
 
         # ── Step 4: Compact timeline + derive scene type ──
         progress(0.8, desc="Building compact timeline...")
-        n_speakers = len(set(row[0] for row in dialogue_table))
+        n_speakers = len(set(int(labels[i]) + 1 for i in range(len(labels))))
         n_segments = len(dialogue_table)
 
-        # Store original segments for post-synthesis timeline placement
+        # Save original timestamps before compaction
+        orig_timestamps = [(float(row[3]), float(row[3]) + float(row[4])) for row in dialogue_table]
+
+        # Compact segments into continuous timeline
+        dialogue_table, merge_map = compact_dialogue_timeline(dialogue_table)
+        n_compacted = len(dialogue_table)
+
+        # Build _ORIG_SEGMENTS from compacted segments mapped back to original time ranges.
+        # Each compacted segment covers the time span of all merged original segments.
+        # This ensures place_audio_on_timeline gets exactly n_compacted entries.
         _ORIG_SEGMENTS = []
-        for row in dialogue_table:
+        for ci, row in enumerate(dialogue_table):
+            if ci < len(merge_map) and merge_map[ci]:
+                ois = merge_map[ci]
+                orig_start = min(orig_timestamps[oi][0] for oi in ois if oi < len(orig_timestamps))
+                orig_end = max(orig_timestamps[oi][1] for oi in ois if oi < len(orig_timestamps))
+            else:
+                orig_start = float(row[3])
+                orig_end = orig_start + float(row[4])
             _ORIG_SEGMENTS.append({
-                "start": float(row[3]), "duration": float(row[4]),
+                "start": orig_start,
+                "duration": float(row[4]),  # compacted duration (matches TTS output length)
                 "spk": str(row[0]),
                 "gender": "male" if "Male" in row[1] else "female",
                 "age": "adult",
             })
 
-        # Compact segments into continuous timeline (model expects this)
-        dialogue_table = compact_dialogue_timeline(dialogue_table)
+        # Rebuild _SEGMENT_TEXTS after compaction using merge_map
+        orig_seg_texts = list(_SEGMENT_TEXTS)  # save pre-compact texts
+        _SEGMENT_TEXTS = []
+        for ci in range(n_compacted):
+            if ci < len(merge_map) and merge_map[ci]:
+                merged_text = ' '.join(orig_seg_texts[oi] for oi in merge_map[ci]
+                                       if oi < len(orig_seg_texts) and orig_seg_texts[oi])
+            else:
+                merged_text = ''
+            _SEGMENT_TEXTS.append(merged_text)
+
+        logger.info(f"Compacted: {n_segments} → {n_compacted} segments, "
+                     f"_ORIG_SEGMENTS: {len(_ORIG_SEGMENTS)} entries")
+
+        # ── Step 5: Generate per-segment clues ──
+        progress(0.9, desc="Generating per-segment descriptions...")
+
+        lang_name = {"zh": "Chinese", "en": "English", "ja": "Japanese",
+                     "ko": "Korean"}.get(lang, lang)
+
+        # Build per-segment clue using context-aware generator
+        seg_clues = []
+        for i, row in enumerate(dialogue_table):
+            seg_text = _SEGMENT_TEXTS[i] if i < len(_SEGMENT_TEXTS) else ''
+            prev_text = _SEGMENT_TEXTS[i-1] if i > 0 and i-1 < len(_SEGMENT_TEXTS) else None
+            next_text = _SEGMENT_TEXTS[i+1] if i+1 < len(_SEGMENT_TEXTS) else None
+            position = 'first' if i == 0 else ('last' if i == len(dialogue_table) - 1 else 'middle')
+            seg_clue = generate_segment_clue(
+                text=seg_text, gender=row[1], age=row[2], spk_id=row[0],
+                prev_text=prev_text, next_text=next_text,
+                lang=lang, n_speakers=n_speakers, position=position,
+            )
+            seg_clues.append(seg_clue)
+
+        # Build unified 7-column table: Speaker|Gender|Age|Start|Duration|Text|Clue
+        unified_table = []
+        for i, row in enumerate(dialogue_table):
+            seg_text = _SEGMENT_TEXTS[i] if i < len(_SEGMENT_TEXTS) else ''
+            seg_clue = seg_clues[i] if i < len(seg_clues) else ''
+            unified_table.append([
+                row[0], row[1], row[2],
+                row[3], row[4],
+                seg_text, seg_clue,
+            ])
+
+        # Text field: join all segment texts for display/fallback
+        text_lines = []
+        for i, row in enumerate(unified_table):
+            seg_text = row[5]
+            if seg_text:
+                text_lines.append(f"[Speaker {row[0]}] {seg_text}")
+        text = '\n'.join(text_lines) if text_lines else asr_result['text'].strip()
 
         if n_speakers == 1:
             scene = "独白 Monologue"
@@ -963,23 +1373,13 @@ def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
         first_gender = dialogue_table[0][1] if dialogue_table else "男 Male"
         first_age = dialogue_table[0][2] if dialogue_table else "中年 Adult"
 
-        # ── Step 5: Generate clue description ──
-        progress(0.9, desc="Generating description...")
-        gender_desc = []
-        for spk_id in sorted(set(row[0] for row in dialogue_table)):
-            spk_rows = [r for r in dialogue_table if r[0] == spk_id]
-            g = spk_rows[0][1]
-            gender_en = "male" if "Male" in g else "female"
-            gender_desc.append(f"Speaker {spk_id}: {gender_en}")
-
-        lang_name = {"zh": "Chinese", "en": "English", "ja": "Japanese",
-                     "ko": "Korean"}.get(lang, lang)
-        clue = f"A {lang_name} {scene.split()[0]} scene with {n_speakers} speaker(s). " + \
-               ", ".join(gender_desc) + "."
+        # Global clue (for single-speaker fallback and text field display)
+        clue = (f"A {lang_name} conversation. "
+                f"The speakers talk with natural emotion and clear intonation.")
 
         bgm_note = " | 🎵 BGM separated" if _BGM_PATH else ""
         status = f"✅ ASR ({lang_name}): {len(text)} chars | " + \
-                 f"{n_segments} segments, {n_speakers} speakers{bgm_note}"
+                 f"{n_compacted} segments, {n_speakers} speakers{bgm_note}"
 
     except Exception as e:
         raise gr.Error(f"⚠️ Auto-analysis failed: {e}")
@@ -996,7 +1396,7 @@ def on_auto_analyze(ref_audio, ref_video, progress=gr.Progress()):
         scene,           # scene_type
         first_gender,    # gender (single-speaker)
         first_age,       # age (single-speaker)
-        dialogue_table,  # dialogue_df
+        unified_table,   # dialogue_df (now 7 columns)
         status,          # detect_status
         vocals_path,     # ref_audio → replace with vocals-only
     )
@@ -1043,17 +1443,24 @@ def build_ui():
 
         # ── Main input area ──
         with gr.Row():
+            # Left column: Video + Audio + Analyze
+            with gr.Column(scale=1):
+                ref_video = gr.Video(label="🎬 Video to Dub (optional)")
+                ref_audio = gr.Audio(
+                    label="🎤 Reference Audio (voice timbre)", type="filepath",
+                )
+                analyze_btn = gr.Button(
+                    "🔍 Auto-Analyze Audio/Video",
+                    variant="secondary", size="sm",
+                )
+                detect_status = gr.Markdown(value="")
+
+            # Right column: Scene controls + Dialogue table
             with gr.Column(scale=2):
-                text = gr.Textbox(
-                    label="Text to Speak",
-                    placeholder="Enter text or select a demo below...",
-                    lines=4,
-                )
-                clue = gr.Textbox(
-                    label="Scene Description (Clue)",
-                    placeholder="e.g. A female speaker with warm, gentle tone...",
-                    lines=2,
-                )
+                # Hidden state for text/clue (used by synthesizer)
+                text = gr.Textbox(visible=False, value="")
+                clue = gr.Textbox(visible=False, value="")
+
                 scene_type = gr.Dropdown(
                     list(TYPE_MAP.keys()), value="独白 Monologue",
                     label="Scene Type",
@@ -1075,28 +1482,18 @@ def build_ui():
                 with gr.Column(visible=False) as dialogue_col:
                     gr.Markdown(
                         "### 🗣️ Dialogue Segments\n"
-                        "*Each row = one speaker turn. Add/remove rows as needed.*"
+                        "*Each row = one speaker turn with its text and clue. Editable.*"
                     )
                     dialogue_df = gr.Dataframe(
-                        headers=["Speaker", "Gender", "Age", "Start(s)", "Duration(s)"],
-                        datatype=["str", "str", "str", "number", "number"],
+                        headers=["Speaker", "Gender", "Age", "Start(s)", "Duration(s)", "Text", "Clue"],
+                        datatype=["str", "str", "str", "number", "number", "str", "str"],
                         value=DEFAULT_DIALOGUE_TABLE,
                         interactive=True,
-                        column_count=(5, "fixed"),
+                        column_count=(7, "fixed"),
                         row_count=(2, "dynamic"),
-                        max_height=250,
+                        max_height=400,
+                        wrap=True,
                     )
-
-            with gr.Column(scale=1):
-                ref_audio = gr.Audio(
-                    label="Reference Audio (voice timbre)", type="filepath",
-                )
-                ref_video = gr.Video(label="Video to Dub (optional)")
-                analyze_btn = gr.Button(
-                    "🔍 Auto-Analyze Audio/Video",
-                    variant="secondary", size="sm",
-                )
-                detect_status = gr.Markdown(value="")
 
         # ── Synthesize button ──
         synth_btn = gr.Button(
